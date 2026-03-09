@@ -1,0 +1,7 @@
+/*
+ * Stub QDebug header for standalone tbin compilation without Qt.
+ * This file intercepts #include <QDebug> in tbin/Map.cpp.
+ * Delegates to qt_compat.h which provides all needed stubs.
+ */
+#pragma once
+#include "../qt_compat.h"
