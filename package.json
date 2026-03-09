@@ -1,0 +1,30 @@
+{
+  "name": "smapi-modding-tool-web",
+  "version": "1.0.0",
+  "description": "Stardew Valley Map Editor with native .tbin support",
+  "main": "main.js",
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "build:debug": "node-gyp rebuild --debug",
+    "install": "node-gyp rebuild",
+    "start": "node main.js",
+    "cli": "node cli.js"
+  },
+  "keywords": [
+    "stardew-valley",
+    "tbin",
+    "map-editor",
+    "smapi",
+    "tiled"
+  ],
+  "author": "Smapifan",
+  "license": "GPL-2.0",
+  "dependencies": {
+    "node-addon-api": "^8.3.1",
+    "open": "^10.1.2"
+  },
+  "gypfile": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

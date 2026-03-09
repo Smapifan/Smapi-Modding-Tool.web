@@ -1,0 +1,502 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Stardew Valley Map Editor – Stylesheet
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-dark:    #1a1a2e;
+  --bg-mid:     #16213e;
+  --bg-panel:   #0f3460;
+  --accent:     #e94560;
+  --accent2:    #f5a623;
+  --text:       #eaeaea;
+  --text-dim:   #8a9bb5;
+  --border:     #2a4080;
+  --hover:      #1e3a6e;
+  --selected:   #e945602a;
+  --panel-w:    260px;
+  --header-h:   46px;
+  --toolbar-h:  42px;
+  --status-h:   24px;
+  --radius:     6px;
+  --font:       'Segoe UI', system-ui, sans-serif;
+  --mono:       'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family:     var(--font);
+  background:      var(--bg-dark);
+  color:           var(--text);
+  height:          100vh;
+  overflow:        hidden;
+  display:         flex;
+  flex-direction:  column;
+  user-select:     none;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+#header {
+  height:          var(--header-h);
+  background:      var(--bg-mid);
+  border-bottom:   1px solid var(--border);
+  display:         flex;
+  align-items:     center;
+  padding:         0 12px;
+  gap:             8px;
+  flex-shrink:     0;
+}
+
+#header .logo {
+  font-size:   18px;
+  font-weight: 700;
+  color:        var(--accent2);
+  white-space: nowrap;
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+}
+
+#header .logo span { font-size: 22px; }
+
+.menu-bar {
+  display:     flex;
+  gap:         2px;
+  margin-left: 8px;
+}
+
+.menu-btn {
+  background:  transparent;
+  border:      none;
+  color:       var(--text);
+  font:        inherit;
+  font-size:   13px;
+  padding:     4px 10px;
+  border-radius: var(--radius);
+  cursor:      pointer;
+  transition:  background 0.15s;
+}
+.menu-btn:hover { background: var(--hover); }
+
+.header-spacer { flex: 1; }
+
+.version-badge {
+  font-size:   11px;
+  color:       var(--text-dim);
+  border:      1px solid var(--border);
+  padding:     2px 8px;
+  border-radius: 12px;
+}
+
+/* ─── Toolbar ────────────────────────────────────────────────────────────── */
+#toolbar {
+  height:         var(--toolbar-h);
+  background:     var(--bg-mid);
+  border-bottom:  1px solid var(--border);
+  display:        flex;
+  align-items:    center;
+  padding:        0 10px;
+  gap:            4px;
+  flex-shrink:    0;
+}
+
+.tool-btn {
+  background:    transparent;
+  border:        1px solid transparent;
+  color:         var(--text);
+  width:         32px;
+  height:        30px;
+  border-radius: var(--radius);
+  cursor:        pointer;
+  font-size:     16px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  transition:    background 0.15s, border-color 0.15s;
+}
+.tool-btn:hover             { background: var(--hover); border-color: var(--border); }
+.tool-btn.active            { background: var(--selected); border-color: var(--accent); }
+
+.tool-separator {
+  width:         1px;
+  height:        24px;
+  background:    var(--border);
+  margin:        0 4px;
+}
+
+.zoom-display {
+  font-size:   12px;
+  color:       var(--text-dim);
+  min-width:   48px;
+  text-align:  center;
+}
+
+/* ─── Main layout ────────────────────────────────────────────────────────── */
+#main {
+  flex:           1;
+  display:        flex;
+  overflow:       hidden;
+  min-height:     0;
+}
+
+/* ─── Left panel (Layers + Tileset) ─────────────────────────────────────── */
+#left-panel {
+  width:          var(--panel-w);
+  background:     var(--bg-mid);
+  border-right:   1px solid var(--border);
+  display:        flex;
+  flex-direction: column;
+  flex-shrink:    0;
+  overflow:       hidden;
+}
+
+/* ─── Right panel (Properties) ───────────────────────────────────────────── */
+#right-panel {
+  width:          var(--panel-w);
+  background:     var(--bg-mid);
+  border-left:    1px solid var(--border);
+  display:        flex;
+  flex-direction: column;
+  flex-shrink:    0;
+  overflow:       hidden;
+}
+
+/* ─── Canvas area ────────────────────────────────────────────────────────── */
+#canvas-area {
+  flex:           1;
+  overflow:       hidden;
+  background:     var(--bg-dark);
+  position:       relative;
+  cursor:         crosshair;
+}
+
+#map-canvas {
+  display:        block;
+  image-rendering: pixelated;
+}
+
+/* ─── Panel sections ─────────────────────────────────────────────────────── */
+.panel-section {
+  display:        flex;
+  flex-direction: column;
+  min-height:     0;
+}
+
+.panel-section.grow { flex: 1; }
+
+.panel-header {
+  display:        flex;
+  align-items:    center;
+  justify-content: space-between;
+  padding:        6px 10px;
+  font-size:      12px;
+  font-weight:    600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color:          var(--text-dim);
+  border-bottom:  1px solid var(--border);
+  background:     var(--bg-panel);
+  flex-shrink:    0;
+}
+
+.panel-header-actions {
+  display: flex;
+  gap:     4px;
+}
+
+.icon-btn {
+  background:    transparent;
+  border:        none;
+  color:         var(--text-dim);
+  cursor:        pointer;
+  font-size:     14px;
+  width:         20px;
+  height:        20px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  border-radius: 3px;
+  transition:    color 0.15s, background 0.15s;
+}
+.icon-btn:hover { color: var(--text); background: var(--hover); }
+
+/* ─── Layer list ─────────────────────────────────────────────────────────── */
+#layer-list {
+  flex:           1;
+  overflow-y:     auto;
+  padding:        4px 0;
+  min-height:     80px;
+}
+
+.layer-item {
+  display:        flex;
+  align-items:    center;
+  padding:        5px 10px;
+  gap:            6px;
+  cursor:         pointer;
+  font-size:      13px;
+  transition:     background 0.1s;
+}
+.layer-item:hover     { background: var(--hover); }
+.layer-item.selected  { background: var(--selected); border-left: 2px solid var(--accent); }
+.layer-item.hidden    { opacity: 0.45; }
+
+.layer-vis {
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.layer-name {
+  flex:       1;
+  overflow:   hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.layer-size {
+  font-size:  10px;
+  color:      var(--text-dim);
+}
+
+/* ─── Tileset panel ──────────────────────────────────────────────────────── */
+#tileset-select-row {
+  display:        flex;
+  align-items:    center;
+  padding:        4px 8px;
+  gap:            6px;
+  flex-shrink:    0;
+  border-bottom:  1px solid var(--border);
+}
+
+#tileset-select {
+  flex:           1;
+  background:     var(--bg-dark);
+  color:          var(--text);
+  border:         1px solid var(--border);
+  border-radius:  var(--radius);
+  padding:        3px 6px;
+  font-size:      12px;
+  font-family:    inherit;
+}
+
+#tileset-canvas-wrap {
+  flex:           1;
+  overflow:       auto;
+  background:     #0a0a18;
+  position:       relative;
+  min-height:     100px;
+}
+
+#tileset-canvas {
+  display:        block;
+  image-rendering: pixelated;
+  cursor:         crosshair;
+}
+
+#tileset-preview-overlay {
+  position:       absolute;
+  pointer-events: none;
+  border:         2px solid var(--accent);
+  box-sizing:     border-box;
+  display:        none;
+}
+
+/* ─── Properties panel ───────────────────────────────────────────────────── */
+#props-list {
+  flex:           1;
+  overflow-y:     auto;
+  padding:        6px;
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+}
+
+.prop-row {
+  display:        grid;
+  grid-template-columns: 1fr 1fr;
+  gap:            4px;
+  align-items:    center;
+}
+
+.prop-key, .prop-val {
+  background:     var(--bg-dark);
+  border:         1px solid var(--border);
+  border-radius:  3px;
+  padding:        3px 6px;
+  font-size:      12px;
+  color:          var(--text);
+  font-family:    var(--mono);
+  width:          100%;
+}
+.prop-key { color: var(--accent2); }
+.prop-val:focus, .prop-key:focus { outline: none; border-color: var(--accent); }
+
+.prop-delete {
+  background:    transparent;
+  border:        none;
+  color:         var(--text-dim);
+  cursor:        pointer;
+  font-size:     13px;
+  padding:       0 4px;
+}
+.prop-delete:hover { color: var(--accent); }
+
+.add-prop-row {
+  display:       flex;
+  gap:           4px;
+  margin-top:    4px;
+}
+.add-prop-row input {
+  flex:          1;
+  background:    var(--bg-dark);
+  border:        1px solid var(--border);
+  border-radius: 3px;
+  padding:       3px 6px;
+  font-size:     12px;
+  color:         var(--text);
+  font-family:   var(--mono);
+}
+.add-prop-row input:focus { outline: none; border-color: var(--accent); }
+.add-prop-row button {
+  background:    var(--accent);
+  border:        none;
+  color:         #fff;
+  padding:       3px 10px;
+  border-radius: 3px;
+  cursor:        pointer;
+  font-size:     12px;
+}
+
+/* ─── Map info ────────────────────────────────────────────────────────────── */
+#map-info {
+  padding:       8px 10px;
+  font-size:     11px;
+  color:         var(--text-dim);
+  border-top:    1px solid var(--border);
+  line-height:   1.6;
+  flex-shrink:   0;
+}
+#map-info strong { color: var(--text); }
+
+/* ─── Status bar ─────────────────────────────────────────────────────────── */
+#status-bar {
+  height:         var(--status-h);
+  background:     var(--bg-panel);
+  border-top:     1px solid var(--border);
+  display:        flex;
+  align-items:    center;
+  padding:        0 12px;
+  font-size:      11px;
+  color:          var(--text-dim);
+  gap:            16px;
+  flex-shrink:    0;
+}
+#status-bar .status-ok   { color: #4caf50; }
+#status-bar .status-warn { color: var(--accent2); }
+#status-bar .status-err  { color: var(--accent); }
+
+/* ─── Modals ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position:       fixed;
+  inset:          0;
+  background:     rgba(0,0,0,0.7);
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  z-index:        100;
+}
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background:     var(--bg-mid);
+  border:         1px solid var(--border);
+  border-radius:  8px;
+  padding:        24px;
+  min-width:      360px;
+  max-width:      520px;
+  box-shadow:     0 8px 32px rgba(0,0,0,0.5);
+}
+
+.modal h2 {
+  font-size:     16px;
+  margin-bottom: 16px;
+  color:         var(--accent2);
+}
+
+.modal label {
+  display:       block;
+  font-size:     12px;
+  color:         var(--text-dim);
+  margin:        10px 0 4px;
+}
+
+.modal input, .modal select {
+  width:         100%;
+  background:    var(--bg-dark);
+  border:        1px solid var(--border);
+  border-radius: var(--radius);
+  padding:       6px 10px;
+  font-size:     13px;
+  color:         var(--text);
+  font-family:   inherit;
+}
+.modal input:focus, .modal select:focus {
+  outline:       none;
+  border-color:  var(--accent);
+}
+
+.modal-actions {
+  display:       flex;
+  justify-content: flex-end;
+  gap:           8px;
+  margin-top:    20px;
+}
+
+.btn-primary {
+  background:    var(--accent);
+  border:        none;
+  color:         #fff;
+  padding:       7px 20px;
+  border-radius: var(--radius);
+  cursor:        pointer;
+  font:          inherit;
+  font-size:     13px;
+  transition:    opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.85; }
+
+.btn-secondary {
+  background:    transparent;
+  border:        1px solid var(--border);
+  color:         var(--text);
+  padding:       7px 20px;
+  border-radius: var(--radius);
+  cursor:        pointer;
+  font:          inherit;
+  font-size:     13px;
+  transition:    background 0.15s;
+}
+.btn-secondary:hover { background: var(--hover); }
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─── Grid overlay ───────────────────────────────────────────────────────── */
+.grid-overlay {
+  position:       absolute;
+  inset:          0;
+  pointer-events: none;
+}
+
+/* ─── Drag-over highlight ────────────────────────────────────────────────── */
+body.drag-over #canvas-area {
+  outline: 3px dashed var(--accent2);
+  outline-offset: -3px;
+}
+
+/* ─── Misc ────────────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+.ellipsis { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
