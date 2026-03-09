@@ -12,11 +12,12 @@
 <header id="header">
   <div class="logo"><span>🌾</span> Stardew Valley Map Editor</div>
   <nav class="menu-bar">
-    <button class="menu-btn" id="btn-new"     title="New map">New</button>
-    <button class="menu-btn" id="btn-open"    title="Open .tbin file">Open</button>
-    <button class="menu-btn" id="btn-save"    title="Save .tbin file">Save</button>
-    <button class="menu-btn" id="btn-saveas"  title="Save As …">Save As</button>
-    <button class="menu-btn" id="btn-export"  title="Export to JSON">Export JSON</button>
+    <button class="menu-btn" id="btn-new"       title="New map">New</button>
+    <button class="menu-btn" id="btn-open"      title="Open .tbin file">Open</button>
+    <button class="menu-btn" id="btn-save"      title="Save .tbin file">Save</button>
+    <button class="menu-btn" id="btn-saveas"    title="Save As …">Save As</button>
+    <button class="menu-btn" id="btn-export"    title="Export to JSON">Export JSON</button>
+    <button class="menu-btn" id="btn-map-props" title="Map properties (music, ambience, …)">Map Props</button>
   </nav>
   <div class="header-spacer"></div>
   <span class="version-badge">v1.0.0</span>
@@ -38,7 +39,15 @@
   <button class="tool-btn"        id="btn-zoom-out" title="Zoom out (-)">－</button>
   <button class="tool-btn"        id="btn-zoom-fit" title="Fit to window">⊡</button>
   <div class="tool-separator"></div>
-  <button class="tool-btn"        id="btn-grid"     title="Toggle grid (G)">⊞</button>
+  <button class="tool-btn"        id="btn-grid"      title="Toggle grid (G)">⊞</button>
+  <button class="tool-btn"        id="btn-collision" title="Collision overlay (C)">🛡</button>
+  <button class="tool-btn"        id="btn-anim-prev" title="Animation preview">▶</button>
+  <div class="tool-separator"></div>
+  <span class="season-label">Season:</span>
+  <button class="season-btn active" id="season-spring" data-season="spring" title="Spring">🌸</button>
+  <button class="season-btn"        id="season-summer" data-season="summer" title="Summer">☀️</button>
+  <button class="season-btn"        id="season-fall"   data-season="fall"   title="Fall">🍂</button>
+  <button class="season-btn"        id="season-winter" data-season="winter" title="Winter">❄️</button>
 </div>
 
 <!-- ═══ Main ══════════════════════════════════════════════════════════════ -->
@@ -66,6 +75,7 @@
       <div class="panel-header">
         Tilesheet
         <div class="panel-header-actions">
+          <button class="icon-btn" id="btn-ts-load-img" title="Load image for selected tilesheet">🖼</button>
           <button class="icon-btn" id="btn-ts-add"  title="Import tilesheet">＋</button>
           <button class="icon-btn" id="btn-ts-del"  title="Remove tilesheet">🗑</button>
         </div>
@@ -88,6 +98,15 @@
 
   <!-- ─── Right panel ─────────────────────────────────────────────────── -->
   <aside id="right-panel">
+
+    <!-- Tile Inspector -->
+    <div class="panel-section" id="tile-inspector-section" style="max-height:220px; flex-shrink:0;">
+      <div class="panel-header">Tile Inspector</div>
+      <div id="tile-inspector">
+        <div class="inspector-hint">Click a tile to inspect</div>
+      </div>
+    </div>
+
     <div class="panel-section grow">
       <div class="panel-header">
         Properties
@@ -175,8 +194,36 @@
 </div>
 
 <!-- Hidden file inputs -->
-<input type="file" id="file-open-input"    accept=".tbin" style="display:none">
-<input type="file" id="file-import-input"  accept=".json" style="display:none">
+<input type="file" id="file-open-input"      accept=".tbin"   style="display:none">
+<input type="file" id="file-import-input"    accept=".json"   style="display:none">
+<input type="file" id="ts-load-img-input"    accept="image/*" style="display:none">
+
+<!-- Map Properties modal -->
+<div class="modal-overlay hidden" id="modal-map-props">
+  <div class="modal">
+    <h2>🗺 Map Properties</h2>
+    <label>Map ID</label>
+    <input type="text" id="mp-id" placeholder="e.g. FarmHouse">
+    <label>Description</label>
+    <input type="text" id="mp-desc" placeholder="Optional description">
+    <label>Music (property)</label>
+    <input type="text" id="mp-music" placeholder="e.g. MarlonsTheme">
+    <label>Ambience (property)</label>
+    <input type="text" id="mp-ambience" placeholder="e.g. spring_day_ambient">
+    <label>Season override (property)</label>
+    <select id="mp-season">
+      <option value="">— none —</option>
+      <option value="spring">Spring</option>
+      <option value="summer">Summer</option>
+      <option value="fall">Fall</option>
+      <option value="winter">Winter</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="mp-cancel">Cancel</button>
+      <button class="btn-primary"   id="mp-ok">Apply</button>
+    </div>
+  </div>
+</div>
 
 <script src="editor.js"></script>
 </body>

@@ -174,6 +174,7 @@ body {
 #map-canvas {
   display:        block;
   image-rendering: pixelated;
+  touch-action:   none;  /* prevent browser scroll/zoom interfering with touch pan/zoom */
 }
 
 /* ─── Panel sections ─────────────────────────────────────────────────────── */
@@ -495,6 +496,123 @@ body {
 body.drag-over #canvas-area {
   outline: 3px dashed var(--accent2);
   outline-offset: -3px;
+}
+
+/* ─── Season selector ────────────────────────────────────────────────────── */
+.season-label {
+  font-size:   11px;
+  color:       var(--text-dim);
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+.season-btn {
+  background:    transparent;
+  border:        1px solid transparent;
+  width:         30px;
+  height:        28px;
+  border-radius: var(--radius);
+  cursor:        pointer;
+  font-size:     14px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  transition:    background 0.15s, border-color 0.15s;
+}
+.season-btn:hover           { background: var(--hover); border-color: var(--border); }
+.season-btn.active          { border-color: var(--accent); background: var(--selected); }
+.season-btn[data-season="spring"].active  { border-color: #6abf69; background: rgba(106,191,105,0.15); }
+.season-btn[data-season="summer"].active  { border-color: #fdd835; background: rgba(253,216,53,0.15); }
+.season-btn[data-season="fall"].active    { border-color: #ef6c00; background: rgba(239,108,0,0.15); }
+.season-btn[data-season="winter"].active  { border-color: #64b5f6; background: rgba(100,181,246,0.15); }
+
+/* ─── Tile inspector ─────────────────────────────────────────────────────── */
+#tile-inspector {
+  flex:          1;
+  overflow-y:    auto;
+  padding:       6px;
+  display:       flex;
+  flex-direction: column;
+  gap:           3px;
+}
+
+.inspector-hint {
+  font-size:  11px;
+  color:      var(--text-dim);
+  text-align: center;
+  padding:    12px 0;
+}
+
+.inspector-row {
+  display:        grid;
+  grid-template-columns: 1fr 1fr;
+  gap:            4px;
+  align-items:    center;
+}
+
+.inspector-key {
+  font-size:  11px;
+  color:      var(--accent2);
+  font-family: var(--mono);
+  overflow:   hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inspector-val {
+  background: var(--bg-dark);
+  border:     1px solid var(--border);
+  border-radius: 3px;
+  padding:    2px 5px;
+  font-size:  11px;
+  color:      var(--text);
+  font-family: var(--mono);
+  width:      100%;
+}
+.inspector-val:focus { outline: none; border-color: var(--accent); }
+
+.inspector-section-title {
+  font-size:     10px;
+  font-weight:   600;
+  text-transform: uppercase;
+  color:         var(--text-dim);
+  letter-spacing: 0.5px;
+  padding:       4px 0 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.inspector-anim-row {
+  display:    flex;
+  align-items: center;
+  gap:        6px;
+  font-size:  11px;
+  color:      var(--text-dim);
+  padding:    2px 0;
+}
+
+.inspector-anim-row strong { color: var(--text); }
+
+/* ─── Tileset error placeholder ──────────────────────────────────────────── */
+.ts-missing-notice {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  padding:     6px 8px;
+  font-size:   11px;
+  color:       var(--accent);
+  border-top:  1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ts-missing-notice button {
+  background:    var(--accent);
+  border:        none;
+  color:         #fff;
+  padding:       2px 8px;
+  border-radius: 3px;
+  cursor:        pointer;
+  font-size:     11px;
 }
 
 /* ─── Misc ────────────────────────────────────────────────────────────────── */
