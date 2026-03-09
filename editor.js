@@ -227,15 +227,12 @@ function renderLayer(ctx, layer) {
     for (let tx = 0; tx < layer.layerWidth; tx++) {
       const tile = layer.tiles[ty * layer.layerWidth + tx];
       if (!tile || tile.isNull) continue;
-      const img = getTileImage(tile, tx * tw, ty * th, tw, th, ctx);
-      if (img) {
-        // img is drawn by getTileImage directly
-      }
+      drawTile(tile, tx * tw, ty * th, tw, th, ctx);
     }
   }
 }
 
-function getTileImage(tile, dx, dy, dw, dh, ctx) {
+function drawTile(tile, dx, dy, dw, dh, ctx) {
   if (!tile || tile.isNull) return null;
   const tsId = tile.isAnimated
     ? (tile.frames && tile.frames[0] ? tile.frames[0].tilesheet : null)
@@ -559,7 +556,7 @@ function parseTbin(ab) {
 
     const total = layer.layerWidth * layer.layerHeight;
     layer.tiles = new Array(total).fill(null).map(() => ({ isNull: true }));
-    let currTs = '', tileIdx = 0;
+    let currTs = '';
 
     // Tile markers (ASCII chars): 'N'=null run, 'T'=tilesheet, 'S'=static, 'A'=animated
     for (let iy = 0; iy < layer.layerHeight; iy++) {

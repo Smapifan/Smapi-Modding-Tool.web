@@ -3,7 +3,7 @@
  *
  * Binary format (tBIN 1.0) documented from Tiled's tbin/Map.cpp:
  *   Header: "tBIN10" (6 bytes)
- *   Map: id(str) desc(str) props layerCount(i32) tilesheetCount(i32) ...
+ *   Map: id(str) desc(str) props tilesheetCount(i32) tilesheets... layerCount(i32) layers...
  *
  * Property types: 0=Bool(u8), 1=Integer(i32), 2=Float(f32), 3=String
  *
@@ -12,7 +12,11 @@
  *   'T' + str  – set current tilesheet
  *   'S'        – static tile: tileIndex(i32) + blendMode(u8) + props
  *   'A'        – animated tile: frameInterval(i32) + frameCount(i32) +
- *                  { 'T'+str | 'S'+[tileIndex(i32)+blendMode(u8)] }* + props
+ *                  { 'T'+str | 'S'+[tileIndex(i32)+blendMode(u8)+props] }* + props
+ *
+ * Note: Per-frame blendMode and properties are consumed during read/write but
+ * are NOT preserved in the JS object representation (they default to 0 / {}).
+ * This is a known simplification – the native C++ addon preserves full fidelity.
  */
 
 'use strict';
