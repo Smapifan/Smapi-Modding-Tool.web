@@ -8,52 +8,52 @@
 </head>
 <body>
 
-<!-- ═══ Header ════════════════════════════════════════════════════════════ -->
+<!-- === Header ============================================================ -->
 <header id="header">
-  <div class="logo"><span>🌾</span> Stardew Valley Map Editor</div>
+  <div class="logo">Stardew Valley Map Editor</div>
   <nav class="menu-bar">
     <button class="menu-btn" id="btn-new"       title="New map">New</button>
     <button class="menu-btn" id="btn-open"      title="Open .tbin file">Open</button>
     <button class="menu-btn" id="btn-save"      title="Save .tbin file">Save</button>
-    <button class="menu-btn" id="btn-saveas"    title="Save As …">Save As</button>
+    <button class="menu-btn" id="btn-saveas"    title="Save As ...">Save As</button>
     <button class="menu-btn" id="btn-export"    title="Export to JSON">Export JSON</button>
-    <button class="menu-btn" id="btn-map-props" title="Map properties (music, ambience, …)">Map Props</button>
+    <button class="menu-btn" id="btn-map-props" title="Map properties (music, ambience, ...)">Map Props</button>
   </nav>
   <div class="header-spacer"></div>
   <span class="version-badge">v1.0.0</span>
 </header>
 
-<!-- ═══ Toolbar ═══════════════════════════════════════════════════════════ -->
+<!-- === Toolbar =========================================================== -->
 <div id="toolbar">
-  <button class="tool-btn active" id="tool-select"  title="Select (S)" data-tool="select">⬚</button>
-  <button class="tool-btn"        id="tool-paint"   title="Paint tile (P)" data-tool="paint">🖌</button>
-  <button class="tool-btn"        id="tool-erase"   title="Erase (E)" data-tool="erase">⌫</button>
-  <button class="tool-btn"        id="tool-fill"    title="Flood fill (F)" data-tool="fill">🪣</button>
-  <button class="tool-btn"        id="tool-eyedrop" title="Eyedropper (I)" data-tool="eyedrop">💧</button>
+  <button class="tool-btn active" id="tool-select"  title="Select (S)" data-tool="select">Sel</button>
+  <button class="tool-btn"        id="tool-paint"   title="Paint tile (P)" data-tool="paint">Pen</button>
+  <button class="tool-btn"        id="tool-erase"   title="Erase (E)" data-tool="erase">Del</button>
+  <button class="tool-btn"        id="tool-fill"    title="Flood fill (F)" data-tool="fill">Fill</button>
+  <button class="tool-btn"        id="tool-eyedrop" title="Eyedropper (I)" data-tool="eyedrop">Pick</button>
   <div class="tool-separator"></div>
-  <button class="tool-btn"        id="btn-undo"     title="Undo (Ctrl+Z)">↩</button>
-  <button class="tool-btn"        id="btn-redo"     title="Redo (Ctrl+Y)">↪</button>
+  <button class="tool-btn"        id="btn-undo"     title="Undo (Ctrl+Z)">Undo</button>
+  <button class="tool-btn"        id="btn-redo"     title="Redo (Ctrl+Y)">Redo</button>
   <div class="tool-separator"></div>
-  <button class="tool-btn"        id="btn-zoom-in"  title="Zoom in (+)">＋</button>
+  <button class="tool-btn"        id="btn-zoom-in"  title="Zoom in (+)">+</button>
   <span   class="zoom-display"    id="zoom-display">100%</span>
-  <button class="tool-btn"        id="btn-zoom-out" title="Zoom out (-)">－</button>
-  <button class="tool-btn"        id="btn-zoom-fit" title="Fit to window">⊡</button>
+  <button class="tool-btn"        id="btn-zoom-out" title="Zoom out (-)">-</button>
+  <button class="tool-btn"        id="btn-zoom-fit" title="Fit to window">Fit</button>
   <div class="tool-separator"></div>
-  <button class="tool-btn"        id="btn-grid"      title="Toggle grid (G)">⊞</button>
-  <button class="tool-btn"        id="btn-collision" title="Collision overlay (C)">🛡</button>
-  <button class="tool-btn"        id="btn-anim-prev" title="Animation preview">▶</button>
+  <button class="tool-btn"        id="btn-grid"      title="Toggle grid (G)">Grid</button>
+  <button class="tool-btn"        id="btn-collision" title="Collision overlay (C)">Coll</button>
+  <button class="tool-btn"        id="btn-anim-prev" title="Animation preview">Anim</button>
   <div class="tool-separator"></div>
   <span class="season-label">Season:</span>
-  <button class="season-btn active" id="season-spring" data-season="spring" title="Spring">🌸</button>
-  <button class="season-btn"        id="season-summer" data-season="summer" title="Summer">☀️</button>
-  <button class="season-btn"        id="season-fall"   data-season="fall"   title="Fall">🍂</button>
-  <button class="season-btn"        id="season-winter" data-season="winter" title="Winter">❄️</button>
+  <button class="season-btn active" id="season-spring" data-season="spring" title="Spring">Spr</button>
+  <button class="season-btn"        id="season-summer" data-season="summer" title="Summer">Sum</button>
+  <button class="season-btn"        id="season-fall"   data-season="fall"   title="Fall">Fall</button>
+  <button class="season-btn"        id="season-winter" data-season="winter" title="Winter">Win</button>
 </div>
 
-<!-- ═══ Main ══════════════════════════════════════════════════════════════ -->
+<!-- === Main ============================================================== -->
 <div id="main">
 
-  <!-- ─── Left panel ──────────────────────────────────────────────────── -->
+  <!-- --- Left panel ---------------------------------------------------- -->
   <aside id="left-panel">
 
     <!-- Layers -->
@@ -61,10 +61,10 @@
       <div class="panel-header">
         Layers
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btn-layer-add"    title="Add layer">＋</button>
-          <button class="icon-btn" id="btn-layer-del"    title="Delete layer">🗑</button>
-          <button class="icon-btn" id="btn-layer-up"     title="Move layer up">▲</button>
-          <button class="icon-btn" id="btn-layer-down"   title="Move layer down">▼</button>
+          <button class="icon-btn" id="btn-layer-add"    title="Add layer">+</button>
+          <button class="icon-btn" id="btn-layer-del"    title="Delete layer">X</button>
+          <button class="icon-btn" id="btn-layer-up"     title="Move layer up">Up</button>
+          <button class="icon-btn" id="btn-layer-down"   title="Move layer down">Dn</button>
         </div>
       </div>
       <div id="layer-list"></div>
@@ -75,9 +75,9 @@
       <div class="panel-header">
         Tilesheet
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btn-ts-load-img" title="Load image for selected tilesheet">🖼</button>
-          <button class="icon-btn" id="btn-ts-add"  title="Import tilesheet">＋</button>
-          <button class="icon-btn" id="btn-ts-del"  title="Remove tilesheet">🗑</button>
+          <button class="icon-btn" id="btn-ts-load-img" title="Load image for selected tilesheet">Img</button>
+          <button class="icon-btn" id="btn-ts-add"  title="Import new tilesheet">+</button>
+          <button class="icon-btn" id="btn-ts-del"  title="Remove tilesheet">X</button>
         </div>
       </div>
       <div id="tileset-select-row">
@@ -85,18 +85,20 @@
       </div>
       <div id="tileset-canvas-wrap">
         <canvas id="tileset-canvas"></canvas>
+        <div id="tileset-drop-overlay">Drop image here</div>
         <div id="tileset-preview-overlay"></div>
+        <div id="tileset-tile-tooltip"></div>
       </div>
     </div>
 
   </aside>
 
-  <!-- ─── Canvas area ─────────────────────────────────────────────────── -->
+  <!-- --- Canvas area --------------------------------------------------- -->
   <div id="canvas-area">
     <canvas id="map-canvas"></canvas>
   </div>
 
-  <!-- ─── Right panel ─────────────────────────────────────────────────── -->
+  <!-- --- Right panel --------------------------------------------------- -->
   <aside id="right-panel">
 
     <!-- Tile Inspector -->
@@ -111,15 +113,15 @@
       <div class="panel-header">
         Properties
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btn-prop-add" title="Add property">＋</button>
+          <button class="icon-btn" id="btn-prop-add" title="Add property">+</button>
         </div>
       </div>
       <div id="props-list"></div>
     </div>
 
     <div id="map-info">
-      <div><strong>Map:</strong> <span id="info-id">—</span></div>
-      <div><strong>Size:</strong> <span id="info-size">—</span></div>
+      <div><strong>Map:</strong> <span id="info-id">-</span></div>
+      <div><strong>Size:</strong> <span id="info-size">-</span></div>
       <div><strong>Layers:</strong> <span id="info-layers">0</span></div>
       <div><strong>Tilesheets:</strong> <span id="info-tsheets">0</span></div>
     </div>
@@ -127,21 +129,21 @@
 
 </div>
 
-<!-- ═══ Status bar ════════════════════════════════════════════════════════ -->
+<!-- === Status bar ======================================================== -->
 <footer id="status-bar">
-  <span id="status-msg" class="status-ok">Ready – open a .tbin file or create a new map</span>
+  <span id="status-msg" class="status-ok">Ready - open a .tbin file or create a new map</span>
   <span style="flex:1"></span>
-  <span id="status-cursor">—</span>
-  <span id="status-tile">—</span>
+  <span id="status-cursor">-</span>
+  <span id="status-tile">-</span>
   <span id="status-tool">Select</span>
 </footer>
 
-<!-- ═══ Modals ════════════════════════════════════════════════════════════ -->
+<!-- === Modals ============================================================ -->
 
 <!-- New Map modal -->
 <div class="modal-overlay hidden" id="modal-new">
   <div class="modal">
-    <h2>🗺 New Map</h2>
+    <h2>New Map</h2>
     <label>Map ID</label>
     <input type="text" id="new-map-id" value="NewMap" placeholder="e.g. FarmHouse">
     <label>Description</label>
@@ -162,7 +164,7 @@
 <!-- Add Layer modal -->
 <div class="modal-overlay hidden" id="modal-add-layer">
   <div class="modal">
-    <h2>➕ Add Layer</h2>
+    <h2>Add Layer</h2>
     <label>Layer ID</label>
     <input type="text" id="new-layer-id" value="Back" placeholder="e.g. Back, Buildings, Front">
     <label>Description</label>
@@ -177,7 +179,7 @@
 <!-- Add Tilesheet modal -->
 <div class="modal-overlay hidden" id="modal-add-ts">
   <div class="modal">
-    <h2>🖼 Import Tilesheet</h2>
+    <h2>Import Tilesheet</h2>
     <label>Tilesheet ID</label>
     <input type="text" id="ts-id" value="spring_outdoors" placeholder="Tilesheet identifier">
     <label>Image file</label>
@@ -186,6 +188,10 @@
     <input type="number" id="ts-tw" value="16" min="1" max="256">
     <label>Tile height (px)</label>
     <input type="number" id="ts-th" value="16" min="1" max="256">
+    <label>Margin (px)</label>
+    <input type="number" id="ts-margin" value="0" min="0" max="64">
+    <label>Spacing (px)</label>
+    <input type="number" id="ts-spacing" value="0" min="0" max="64">
     <div class="modal-actions">
       <button class="btn-secondary" id="add-ts-cancel">Cancel</button>
       <button class="btn-primary"   id="add-ts-ok">Import</button>
@@ -201,7 +207,7 @@
 <!-- Map Properties modal -->
 <div class="modal-overlay hidden" id="modal-map-props">
   <div class="modal">
-    <h2>🗺 Map Properties</h2>
+    <h2>Map Properties</h2>
     <label>Map ID</label>
     <input type="text" id="mp-id" placeholder="e.g. FarmHouse">
     <label>Description</label>
@@ -212,7 +218,7 @@
     <input type="text" id="mp-ambience" placeholder="e.g. spring_day_ambient">
     <label>Season override (property)</label>
     <select id="mp-season">
-      <option value="">— none —</option>
+      <option value="">- none -</option>
       <option value="spring">Spring</option>
       <option value="summer">Summer</option>
       <option value="fall">Fall</option>
@@ -223,6 +229,38 @@
       <button class="btn-primary"   id="mp-ok">Apply</button>
     </div>
   </div>
+</div>
+
+<!-- Missing Tilesheet Warning modal -->
+<div class="modal-overlay hidden" id="modal-ts-missing">
+  <div class="modal">
+    <h2>Tilesheet Image Missing</h2>
+    <p id="ts-missing-msg" style="font-size:13px; color:var(--text); margin-bottom:12px; line-height:1.5;"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="ts-missing-cancel">Cancel</button>
+      <button class="btn-primary"   id="ts-missing-select">Select Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- Remove Tilesheet Confirmation modal -->
+<div class="modal-overlay hidden" id="modal-ts-confirm-del">
+  <div class="modal">
+    <h2>Remove Tilesheet</h2>
+    <p id="ts-del-msg" style="font-size:13px; color:var(--text); margin-bottom:12px; line-height:1.5;"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="ts-del-cancel">Cancel</button>
+      <button class="btn-primary"   id="ts-del-confirm" style="background:var(--accent)">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tileset Context Menu -->
+<div id="ts-context-menu" class="context-menu hidden">
+  <button class="ctx-item" id="ctx-load-img">Load Image</button>
+  <button class="ctx-item" id="ctx-rename">Rename</button>
+  <button class="ctx-item" id="ctx-remove">Remove</button>
+  <button class="ctx-item" id="ctx-export-img">Export Image</button>
 </div>
 
 <script src="editor.js"></script>

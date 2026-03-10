@@ -1,13 +1,13 @@
 /**
- * Stardew Valley Map Editor – Frontend Logic
+ * Stardew Valley Map Editor - Frontend Logic
  * Vanilla JS + HTML5 Canvas, no framework, no server.
  */
 
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // State
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const state = {
   map: null,          // current map object
@@ -35,13 +35,13 @@ const state = {
   lastTouchDist: null,   // for pinch-to-zoom
   undoStack: [],
   redoStack: [],
-  tileImages: {},     // id → HTMLImageElement
-  tileMissing: {},    // id → true if image failed/not loaded (for error display)
+  tileImages: {},     // id -> HTMLImageElement
+  tileMissing: {},    // id -> true if image failed/not loaded (for error display)
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Node.js / Browser shim
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const IS_NODE = typeof process !== 'undefined' && process.versions && process.versions.node;
 
@@ -61,9 +61,9 @@ if (IS_NODE) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // DOM references
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const $ = id => document.getElementById(id);
 const mapCanvas    = $('map-canvas');
@@ -87,9 +87,9 @@ const infoTsheets  = $('info-tsheets');
 const mCtx = mapCanvas.getContext('2d');
 const tCtx = tsCanvas.getContext('2d');
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Map model helpers
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function createEmptyMap(id = 'NewMap', desc = '', w = 30, h = 20, tileW = 16, tileH = 16) {
   return {
@@ -129,9 +129,9 @@ function getActiveTilesheet() {
   return state.map.tilesheets[state.activeTsIndex] || null;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Undo / Redo
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function pushUndo() {
   state.undoStack.push(JSON.stringify(state.map));
@@ -154,9 +154,9 @@ function redo() {
   afterMapChange();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Rendering
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function resizeCanvas() {
   const rect = canvasArea.getBoundingClientRect();
@@ -269,12 +269,12 @@ function renderLayer(ctx, layer) {
   }
 }
 
-// ─── Collision overlay ────────────────────────────────────────────────────
+// --- Collision overlay ----------------------------------------------------
 // Reads tile properties and draws colored overlays:
-//   Passable:false / no Passable + non-null → red (solid)
-//   Passable:true  → green (walkable)
-//   WaterTile:true → blue
-//   NoRender:true  → semi-transparent gray
+//   Passable:false / no Passable + non-null -> red (solid)
+//   Passable:true  -> green (walkable)
+//   WaterTile:true -> blue
+//   NoRender:true  -> semi-transparent gray
 
 function renderCollisionOverlay(ctx, layer) {
   const tw = layer.tileWidth;
@@ -354,7 +354,7 @@ function drawTile(tile, dx, dy, dw, dh, ctx) {
   return true;
 }
 
-// ─── Tilesheet canvas ─────────────────────────────────────────────────────
+// --- Tilesheet canvas -----------------------------------------------------
 
 function renderTileset() {
   const ts = getActiveTilesheet();
@@ -381,16 +381,16 @@ function renderTileset() {
     tCtx.stroke();
     tCtx.fillStyle = '#e94560';
     tCtx.font = '12px system-ui';
-    tCtx.fillText('No image – click 🖼 to load', 60, 36);
+    tCtx.fillText('No image - click [Img] to load', 60, 36);
 
     // Show a notice below the canvas area
     const wrap = document.getElementById('tileset-canvas-wrap');
     const notice = document.createElement('div');
     notice.className = 'ts-missing-notice';
     notice.id = 'ts-missing-notice';
-    notice.innerHTML = `⚠ <strong>${ts.id}</strong>: Missing image`
-      + (ts.imagePath ? ` (<code>${ts.imagePath}</code>)` : '')
-      + ` – <button id="ts-notice-load">Load image 🖼</button>`;
+    notice.innerHTML = '[!] <strong>' + ts.id + '</strong>: Missing image'
+      + (ts.imagePath ? ' (<code>' + ts.imagePath + '</code>)' : '')
+      + ' &ndash; <button id="ts-notice-load">Load image</button>';
     wrap.parentElement.insertBefore(notice, wrap.nextSibling);
     document.getElementById('ts-notice-load').addEventListener('click', () => {
       $('ts-load-img-input').click();
@@ -427,9 +427,9 @@ function updateTsOverlay() {
   tsOverlay.style.height   = ts.tileHeight + 'px';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // UI rendering
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function renderLayerList() {
   layerList.innerHTML = '';
@@ -446,7 +446,7 @@ function renderLayerList() {
 
     const eye = document.createElement('span');
     eye.className = 'layer-vis';
-    eye.textContent = layer.visible ? '👁' : '🚫';
+    eye.textContent = layer.visible ? 'V' : 'H';
     eye.title = 'Toggle visibility';
     eye.addEventListener('click', e => {
       e.stopPropagation();
@@ -462,7 +462,7 @@ function renderLayerList() {
 
     const size = document.createElement('span');
     size.className = 'layer-size';
-    size.textContent = `${layer.layerWidth}×${layer.layerHeight}`;
+    size.textContent = `${layer.layerWidth}x${layer.layerHeight}`;
 
     item.append(eye, name, size);
     item.addEventListener('click', () => {
@@ -482,7 +482,7 @@ function renderTsSelect() {
     const opt = document.createElement('option');
     opt.value = i;
     const missing = state.tileMissing[ts.id];
-    opt.textContent = missing ? `⚠ ${ts.id} (Missing: ${ts.imagePath || ts.id})` : ts.id;
+    opt.textContent = missing ? `[!] ${ts.id} (Missing: ${ts.imagePath || ts.id})` : ts.id;
     if (i === state.activeTsIndex) opt.selected = true;
     tsSelect.appendChild(opt);
   });
@@ -522,7 +522,7 @@ function renderProps() {
 
     const delBtn = document.createElement('button');
     delBtn.className = 'prop-delete';
-    delBtn.textContent = '✕';
+    delBtn.textContent = 'X';
     delBtn.addEventListener('click', () => {
       pushUndo();
       delete layer.props[k];
@@ -555,15 +555,15 @@ function renderProps() {
 
 function renderMapInfo() {
   if (!state.map) {
-    infoId.textContent = '—';
-    infoSize.textContent = '—';
+    infoId.textContent = '-';
+    infoSize.textContent = '-';
     infoLayers.textContent = '0';
     infoTsheets.textContent = '0';
     return;
   }
   const layer = state.map.layers[0];
   infoId.textContent      = state.map.id;
-  infoSize.textContent    = layer ? `${layer.layerWidth}×${layer.layerHeight}` : '—';
+  infoSize.textContent    = layer ? `${layer.layerWidth}x${layer.layerHeight}` : '-';
   infoLayers.textContent  = state.map.layers.length;
   infoTsheets.textContent = state.map.tilesheets.length;
 }
@@ -578,7 +578,7 @@ function renderAll() {
   renderMap();
 }
 
-// ─── Tile inspector ───────────────────────────────────────────────────────
+// --- Tile inspector -------------------------------------------------------
 
 function renderTileInspector() {
   inspectorDiv.innerHTML = '';
@@ -605,7 +605,7 @@ function renderTileInspector() {
   // Location
   const locTitle = document.createElement('div');
   locTitle.className = 'inspector-section-title';
-  locTitle.textContent = `Tile [${x}, ${y}] — ${layer.id}`;
+  locTitle.textContent = `Tile [${x}, ${y}] - ${layer.id}`;
   inspectorDiv.appendChild(locTitle);
 
   // Basic info
@@ -681,7 +681,7 @@ function renderTileInspector() {
       const delBtn = document.createElement('button');
       delBtn.className = 'prop-delete';
       delBtn.title = 'Delete property';
-      delBtn.textContent = '✕';
+      delBtn.textContent = 'X';
       delBtn.addEventListener('click', () => {
         pushUndo();
         delete tile.props[k];
@@ -745,18 +745,18 @@ function afterMapChange() {
   renderAll();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Status helpers
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function setStatus(msg, type = 'ok') {
   statusMsg.textContent = msg;
   statusMsg.className   = 'status-' + type;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // .tbin I/O via FileReader (browser)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function loadMapFromArrayBuffer(buf, fileName) {
   // Use the JS fallback inline (avoid require in browser)
@@ -782,9 +782,11 @@ function loadMapFromArrayBuffer(buf, fileName) {
     const missingCount = Object.keys(state.tileMissing).length;
     if (missingCount > 0) {
       setStatus(
-        `Loaded: ${fileName || 'map'} — ${missingCount} tilesheet image(s) missing. Use 🖼 to load.`,
+        `Loaded: ${fileName || 'map'} - ${missingCount} tilesheet image(s) missing. Use [Img] to load.`,
         'warn'
       );
+      // Auto-show missing tilesheet dialog for first missing tilesheet
+      showMissingTilesheetDialog();
     } else {
       setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
     }
@@ -798,9 +800,47 @@ function mapToArrayBuffer(map) {
   return encodeTbin(map);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// Missing Tilesheet Dialog
+// ===========================================================================
+
+function showMissingTilesheetDialog(tsId) {
+  const ts = tsId
+    ? state.map && state.map.tilesheets.find(t => t.id === tsId)
+    : state.map && state.map.tilesheets.find(t => state.tileMissing[t.id]);
+  if (!ts) return;
+
+  const msgEl = $('ts-missing-msg');
+  msgEl.textContent = 'Tilesheet "' + ts.id + '" expects image at: '
+    + (ts.imagePath || ts.id)
+    + '. Please select the image file to load.';
+
+  $('modal-ts-missing').classList.remove('hidden');
+
+  // One-shot handlers
+  const onSelect = () => {
+    $('modal-ts-missing').classList.add('hidden');
+    cleanup();
+    // Temporarily switch to this tilesheet so ts-load-img-input loads into it
+    const idx = state.map.tilesheets.indexOf(ts);
+    if (idx >= 0) state.activeTsIndex = idx;
+    $('ts-load-img-input').click();
+  };
+  const onCancel = () => {
+    $('modal-ts-missing').classList.add('hidden');
+    cleanup();
+  };
+  function cleanup() {
+    $('ts-missing-select').removeEventListener('click', onSelect);
+    $('ts-missing-cancel').removeEventListener('click', onCancel);
+  }
+  $('ts-missing-select').addEventListener('click', onSelect);
+  $('ts-missing-cancel').addEventListener('click', onCancel);
+}
+
+// ===========================================================================
 // Pure JS .tbin parser (browser-safe, mirrors tbin-js-fallback.js)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function parseTbin(ab) {
   const view    = new DataView(ab);
@@ -865,18 +905,18 @@ function parseTbin(ab) {
       let ix = 0;
       while (ix < layer.layerWidth) {
         const c = ru8();
-        if (c === 0x4E) { // 'N' – null run
+        if (c === 0x4E) { // 'N' - null run
           ix += ri32();
-        } else if (c === 0x54) { // 'T' – set tilesheet
+        } else if (c === 0x54) { // 'T' - set tilesheet
           currTs = rstr();
-        } else if (c === 0x53) { // 'S' – static tile
+        } else if (c === 0x53) { // 'S' - static tile
           const tile = { isNull: false, isAnimated: false, staticTilesheet: currTs };
           tile.staticIndex = ri32();
           tile.blendMode   = ru8();
           tile.props       = readProps();
           layer.tiles[ix + iy * layer.layerWidth] = tile;
           ix++;
-        } else if (c === 0x41) { // 'A' – animated tile
+        } else if (c === 0x41) { // 'A' - animated tile
           const tile = { isNull: false, isAnimated: true, frames: [] };
           tile.frameInterval = ri32();
           const fc           = ri32();
@@ -994,9 +1034,9 @@ function encodeTbin(map) {
   return out.buffer;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // File operations
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function openFile() {
   $('file-open-input').click();
@@ -1037,9 +1077,9 @@ function exportJson() {
   setStatus('Exported JSON: ' + a.download, 'ok');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Zoom / Pan
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function setZoom(z) {
   state.zoom = Math.max(0.1, Math.min(8, z));
@@ -1061,9 +1101,9 @@ function fitToWindow() {
   renderMap();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Canvas mouse events (map)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function canvasTileCoords(e) {
   const rect = mapCanvas.getBoundingClientRect();
@@ -1190,7 +1230,7 @@ mapCanvas.addEventListener('mousemove', e => {
     statusCursor.textContent = `Tile: ${tc.x},${tc.y}`;
     if (state.isPainting) applyTool(tc.x, tc.y);
   } else {
-    statusCursor.textContent = '—';
+    statusCursor.textContent = '-';
   }
   renderMap();
 });
@@ -1206,7 +1246,7 @@ mapCanvas.addEventListener('mouseup', e => {
 mapCanvas.addEventListener('mouseleave', () => {
   state.hoverTile  = null;
   state.isPainting = false;
-  statusCursor.textContent = '—';
+  statusCursor.textContent = '-';
   renderMap();
 });
 
@@ -1254,9 +1294,9 @@ function applyTool(tx, ty) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Tileset canvas events
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 tsCanvas.addEventListener('click', e => {
   const ts = getActiveTilesheet();
@@ -1275,9 +1315,9 @@ tsSelect.addEventListener('change', () => {
   renderTileset();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Toolbar buttons
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1304,7 +1344,7 @@ $('btn-grid').addEventListener('click', () => {
 });
 $('btn-grid').classList.add('active');
 
-// ─── Collision overlay toggle ────────────────────────────────────────────
+// --- Collision overlay toggle --------------------------------------------
 
 $('btn-collision').addEventListener('click', () => {
   state.showCollision = !state.showCollision;
@@ -1312,7 +1352,7 @@ $('btn-collision').addEventListener('click', () => {
   renderMap();
 });
 
-// ─── Animation preview toggle ────────────────────────────────────────────
+// --- Animation preview toggle --------------------------------------------
 
 $('btn-anim-prev').addEventListener('click', () => {
   state.animPreview = !state.animPreview;
@@ -1346,7 +1386,7 @@ function stopAnimLoop() {
   state.animTime = 0;
 }
 
-// ─── Season selector ─────────────────────────────────────────────────────
+// --- Season selector -----------------------------------------------------
 
 document.querySelectorAll('.season-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1365,9 +1405,9 @@ document.querySelectorAll('.season-btn').forEach(btn => {
   });
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Header buttons
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 $('btn-new').addEventListener('click', () => {
   $('modal-new').classList.remove('hidden');
@@ -1395,12 +1435,12 @@ $('new-create').addEventListener('click', () => {
   $('modal-new').classList.add('hidden');
   fitToWindow();
   afterMapChange();
-  setStatus(`Created: ${id} (${w}×${h})`, 'ok');
+  setStatus(`Created: ${id} (${w}x${h})`, 'ok');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Layer panel buttons
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 $('btn-layer-add').addEventListener('click', () => {
   if (!state.map) { setStatus('Open or create a map first', 'warn'); return; }
@@ -1450,9 +1490,9 @@ $('btn-layer-down').addEventListener('click', () => {
   renderAll();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Tilesheet buttons
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 $('btn-ts-add').addEventListener('click', () => {
   if (!state.map) { setStatus('Open or create a map first', 'warn'); return; }
@@ -1461,10 +1501,12 @@ $('btn-ts-add').addEventListener('click', () => {
 
 $('add-ts-cancel').addEventListener('click', () => $('modal-add-ts').classList.add('hidden'));
 $('add-ts-ok').addEventListener('click', () => {
-  const id    = $('ts-id').value.trim() || 'tilesheet';
-  const tw    = parseInt($('ts-tw').value, 10) || 16;
-  const th    = parseInt($('ts-th').value, 10) || 16;
-  const file  = $('ts-file').files[0];
+  const id      = $('ts-id').value.trim() || 'tilesheet';
+  const tw      = parseInt($('ts-tw').value, 10) || 16;
+  const th      = parseInt($('ts-th').value, 10) || 16;
+  const margin  = parseInt($('ts-margin').value, 10) || 0;
+  const spacing = parseInt($('ts-spacing').value, 10) || 0;
+  const file    = $('ts-file').files[0];
 
   if (!file) { setStatus('Please select an image file', 'warn'); return; }
 
@@ -1481,6 +1523,8 @@ $('add-ts-ok').addEventListener('click', () => {
         sheetHeight: img.naturalHeight,
         tileWidth:   tw,
         tileHeight:  th,
+        margin:      margin,
+        spacing:     spacing,
         props:       {},
       };
       state.map.tilesheets.push(ts);
@@ -1488,7 +1532,7 @@ $('add-ts-ok').addEventListener('click', () => {
       state.activeTsIndex    = state.map.tilesheets.length - 1;
       $('modal-add-ts').classList.add('hidden');
       renderAll();
-      setStatus(`Imported tilesheet: ${id}`, 'ok');
+      setStatus('Imported tilesheet: ' + id, 'ok');
     };
     img.src = ev.target.result;
   };
@@ -1497,6 +1541,18 @@ $('add-ts-ok').addEventListener('click', () => {
 
 $('btn-ts-del').addEventListener('click', () => {
   if (!state.map || !state.map.tilesheets.length) return;
+  const ts = state.map.tilesheets[state.activeTsIndex];
+  if (!ts) return;
+  $('ts-del-msg').textContent = 'Remove tilesheet "' + ts.id + '"? Tiles referencing this tilesheet will lose their image.';
+  $('modal-ts-confirm-del').classList.remove('hidden');
+});
+
+$('ts-del-cancel').addEventListener('click', () => {
+  $('modal-ts-confirm-del').classList.add('hidden');
+});
+$('ts-del-confirm').addEventListener('click', () => {
+  $('modal-ts-confirm-del').classList.add('hidden');
+  if (!state.map || !state.map.tilesheets.length) return;
   pushUndo();
   const id = state.map.tilesheets[state.activeTsIndex].id;
   state.map.tilesheets.splice(state.activeTsIndex, 1);
@@ -1504,9 +1560,10 @@ $('btn-ts-del').addEventListener('click', () => {
   delete state.tileMissing[id];
   state.activeTsIndex = 0;
   renderAll();
+  setStatus('Removed tilesheet: ' + id, 'ok');
 });
 
-// ─── Load image for existing tilesheet ───────────────────────────────────
+// --- Load image for existing tilesheet -----------------------------------
 
 $('btn-ts-load-img').addEventListener('click', () => {
   if (!state.map || !state.map.tilesheets.length) {
@@ -1531,7 +1588,7 @@ $('ts-load-img-input').addEventListener('change', e => {
       ts.sheetWidth  = img.naturalWidth;
       ts.sheetHeight = img.naturalHeight;
       renderAll();
-      setStatus(`Loaded image for tilesheet: ${ts.id}`, 'ok');
+      setStatus('Loaded image for tilesheet: ' + ts.id, 'ok');
     };
     img.src = ev.target.result;
   };
@@ -1539,7 +1596,173 @@ $('ts-load-img-input').addEventListener('change', e => {
   e.target.value = '';
 });
 
-// ─── Map properties modal ────────────────────────────────────────────────
+// --- Tileset canvas drag-and-drop -----------------------------------------
+
+const tsCanvasWrap = document.getElementById('tileset-canvas-wrap');
+
+tsCanvasWrap.addEventListener('dragover', e => {
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  if (dt && dt.items && [...dt.items].some(i => i.kind === 'file' && i.type.startsWith('image/'))) {
+    tsCanvasWrap.classList.add('ts-drag-over');
+  }
+});
+
+tsCanvasWrap.addEventListener('dragleave', e => {
+  if (!tsCanvasWrap.contains(e.relatedTarget)) {
+    tsCanvasWrap.classList.remove('ts-drag-over');
+  }
+});
+
+tsCanvasWrap.addEventListener('drop', e => {
+  e.preventDefault();
+  e.stopPropagation(); // Don't let the global drop handler catch it
+  tsCanvasWrap.classList.remove('ts-drag-over');
+  const file = e.dataTransfer && e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  if (!state.map) { setStatus('Open or create a map first to load a tilesheet image', 'warn'); return; }
+
+  const ts = getActiveTilesheet();
+  if (!ts) {
+    // No tilesheet selected - prompt user to create one
+    setStatus('No tilesheet selected. Use [+] to import a new tilesheet first.', 'warn');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      state.tileImages[ts.id] = img;
+      delete state.tileMissing[ts.id];
+      ts.sheetWidth  = img.naturalWidth;
+      ts.sheetHeight = img.naturalHeight;
+      renderAll();
+      setStatus('Dropped image loaded for tilesheet: ' + ts.id, 'ok');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// --- Tileset canvas hover tooltip -----------------------------------------
+
+const tsTileTooltip = $('tileset-tile-tooltip');
+
+tsCanvas.addEventListener('mousemove', e => {
+  const ts = getActiveTilesheet();
+  if (!ts) { tsTileTooltip.style.display = 'none'; return; }
+  const img = state.tileImages[ts.id];
+  if (!img || !img.complete) { tsTileTooltip.style.display = 'none'; return; }
+  const rect = tsCanvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const tx = Math.floor(cx / ts.tileWidth);
+  const ty = Math.floor(cy / ts.tileHeight);
+  const tilesPerRow = Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  const idx = ty * tilesPerRow + tx;
+  tsTileTooltip.textContent = 'Tile #' + idx + ' (' + tx + ',' + ty + ')';
+  tsTileTooltip.style.display = 'block';
+  // Position inside the wrap, relative to canvas
+  const wrapRect = tsCanvasWrap.getBoundingClientRect();
+  let tipX = (e.clientX - wrapRect.left) + 10;
+  let tipY = (e.clientY - wrapRect.top)  + 14;
+  tsTileTooltip.style.left = tipX + 'px';
+  tsTileTooltip.style.top  = tipY + 'px';
+});
+
+tsCanvas.addEventListener('mouseleave', () => {
+  tsTileTooltip.style.display = 'none';
+});
+
+// --- Tileset context menu -------------------------------------------------
+
+const tsContextMenu = $('ts-context-menu');
+
+function hideContextMenu() {
+  tsContextMenu.classList.add('hidden');
+}
+
+tsCanvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (!state.map || !state.map.tilesheets.length) return;
+  // Position the menu at cursor
+  tsContextMenu.style.left = e.clientX + 'px';
+  tsContextMenu.style.top  = e.clientY + 'px';
+  tsContextMenu.classList.remove('hidden');
+});
+
+document.addEventListener('click', e => {
+  if (!tsContextMenu.classList.contains('hidden') && !tsContextMenu.contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideContextMenu();
+}, true);
+
+$('ctx-load-img').addEventListener('click', () => {
+  hideContextMenu();
+  if (!state.map || !state.map.tilesheets.length) return;
+  $('ts-load-img-input').click();
+});
+
+$('ctx-rename').addEventListener('click', () => {
+  hideContextMenu();
+  const ts = getActiveTilesheet();
+  if (!ts) return;
+  const newId = prompt('Rename tilesheet "' + ts.id + '" to:', ts.id);
+  if (!newId || newId === ts.id) return;
+  pushUndo();
+  // Update all tile references to the old id
+  for (const layer of state.map.layers) {
+    for (const tile of layer.tiles) {
+      if (!tile || tile.isNull) continue;
+      if (!tile.isAnimated && tile.staticTilesheet === ts.id) tile.staticTilesheet = newId;
+      if (tile.isAnimated && tile.frames) {
+        for (const fr of tile.frames) {
+          if (fr.tilesheet === ts.id) fr.tilesheet = newId;
+        }
+      }
+    }
+  }
+  // Move the image cache entry
+  if (state.tileImages[ts.id]) { state.tileImages[newId] = state.tileImages[ts.id]; delete state.tileImages[ts.id]; }
+  if (state.tileMissing[ts.id]) { state.tileMissing[newId] = true; delete state.tileMissing[ts.id]; }
+  ts.id = newId;
+  renderAll();
+  setStatus('Renamed tilesheet to: ' + newId, 'ok');
+});
+
+$('ctx-remove').addEventListener('click', () => {
+  hideContextMenu();
+  $('btn-ts-del').click(); // reuse the confirmation dialog
+});
+
+$('ctx-export-img').addEventListener('click', () => {
+  hideContextMenu();
+  const ts = getActiveTilesheet();
+  if (!ts) return;
+  const img = state.tileImages[ts.id];
+  if (!img || !img.complete) { setStatus('No image loaded for tilesheet: ' + ts.id, 'warn'); return; }
+  // Draw to a temp canvas and export
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width  = img.naturalWidth;
+  tmpCanvas.height = img.naturalHeight;
+  tmpCanvas.getContext('2d').drawImage(img, 0, 0);
+  tmpCanvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = ts.id + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Exported tilesheet image: ' + ts.id + '.png', 'ok');
+  }, 'image/png');
+});
+
+// --- Map properties modal ------------------------------------------------
 
 $('btn-map-props').addEventListener('click', () => {
   if (!state.map) { setStatus('Open or create a map first', 'warn'); return; }
@@ -1573,18 +1796,18 @@ $('mp-ok').addEventListener('click', () => {
   setStatus(`Map properties updated: ${state.map.id}`, 'ok');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Properties: add button
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 $('btn-prop-add').addEventListener('click', () => {
   const input = propsDiv.querySelector('.add-prop-row input');
   if (input) input.focus();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Keyboard shortcuts
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -1614,9 +1837,9 @@ function setActiveTool(tool) {
   if (btn) btn.click();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Touch events (mobile / tablet support)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function getTouchPos(e) {
   const rect = mapCanvas.getBoundingClientRect();
@@ -1681,11 +1904,13 @@ mapCanvas.addEventListener('touchend', e => {
   state.lastTouchDist = null;
 }, { passive: false });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Drag & drop .tbin files
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 document.addEventListener('dragover', e => {
+  // Don't show body drag-over highlight when over the tileset canvas wrap
+  if (tsCanvasWrap.contains(e.target)) return;
   e.preventDefault();
   document.body.classList.add('drag-over');
 });
@@ -1693,6 +1918,8 @@ document.addEventListener('dragleave', e => {
   if (!e.relatedTarget) document.body.classList.remove('drag-over');
 });
 document.addEventListener('drop', async e => {
+  // If dropped on tileset canvas wrap, that handler already processed it
+  if (tsCanvasWrap.contains(e.target)) return;
   e.preventDefault();
   document.body.classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
@@ -1713,15 +1940,15 @@ document.addEventListener('drop', async e => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Resize observer
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 new ResizeObserver(resizeCanvas).observe(canvasArea);
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // Init
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 (function init() {
   resizeCanvas();
@@ -1730,7 +1957,7 @@ new ResizeObserver(resizeCanvas).observe(canvasArea);
   renderProps();
   renderTileInspector();
   renderMapInfo();
-  setStatus('Ready – open a .tbin file or create a new map (Ctrl+N)', 'ok');
+  setStatus('Ready - open a .tbin file or create a new map (Ctrl+N)', 'ok');
 
   // Welcome render
   renderMap();
