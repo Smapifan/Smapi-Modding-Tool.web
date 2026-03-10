@@ -23,7 +23,7 @@ const state = {
   showGrid: true,
   showCollision: false,  // collision overlay toggle
   animPreview: false,    // animation preview toggle
-  animFrame: 0,          // current animation frame index (for preview)
+  animTime: 0,           // elapsed ms since animation preview started (for per-tile frame intervals)
   animTimer: null,       // requestAnimationFrame handle
   season: 'spring',      // current season: spring | summer | fall | winter
   hoverTile: null,
@@ -44,6 +44,9 @@ const state = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const IS_NODE = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+// Default animation frame interval (ms) used when a tile's frameInterval is 0 or missing
+const DEFAULT_FRAME_INTERVAL_MS = 150;
 
 let tbinAddon = null;
 if (IS_NODE) {
@@ -257,12 +260,11 @@ function renderMap() {
 function renderLayer(ctx, layer) {
   const tw = layer.tileWidth;
   const th = layer.tileHeight;
-  const animF = state.animFrame;
   for (let ty = 0; ty < layer.layerHeight; ty++) {
     for (let tx = 0; tx < layer.layerWidth; tx++) {
       const tile = layer.tiles[ty * layer.layerWidth + tx];
       if (!tile || tile.isNull) continue;
-      drawTile(tile, tx * tw, ty * th, tw, th, ctx, animF);
+      drawTile(tile, tx * tw, ty * th, tw, th, ctx);
     }
   }
 }
@@ -303,13 +305,17 @@ function renderCollisionOverlay(ctx, layer) {
   }
 }
 
-function drawTile(tile, dx, dy, dw, dh, ctx, animF = 0) {
+function drawTile(tile, dx, dy, dw, dh, ctx) {
   if (!tile || tile.isNull) return null;
 
   let tsId, tileIdx;
   if (tile.isAnimated && tile.frames && tile.frames.length > 0) {
-    // Cycle through frames when animation preview is active
-    const frameIdx = state.animPreview ? (animF % tile.frames.length) : 0;
+    // Use elapsed time + per-tile frameInterval for smooth per-tile animation
+    let frameIdx = 0;
+    if (state.animPreview) {
+      const interval = (tile.frameInterval > 0) ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS;
+      frameIdx = Math.floor(state.animTime / interval) % tile.frames.length;
+    }
     tsId    = tile.frames[frameIdx].tilesheet;
     tileIdx = tile.frames[frameIdx].tileIndex;
   } else {
@@ -382,7 +388,9 @@ function renderTileset() {
     const notice = document.createElement('div');
     notice.className = 'ts-missing-notice';
     notice.id = 'ts-missing-notice';
-    notice.innerHTML = `⚠ <strong>${ts.id}</strong>: image not loaded. <button id="ts-notice-load">Load image</button>`;
+    notice.innerHTML = `⚠ <strong>${ts.id}</strong>: Missing image`
+      + (ts.imagePath ? ` (<code>${ts.imagePath}</code>)` : '')
+      + ` – <button id="ts-notice-load">Load image 🖼</button>`;
     wrap.parentElement.insertBefore(notice, wrap.nextSibling);
     document.getElementById('ts-notice-load').addEventListener('click', () => {
       $('ts-load-img-input').click();
@@ -473,7 +481,8 @@ function renderTsSelect() {
   state.map.tilesheets.forEach((ts, i) => {
     const opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = ts.id;
+    const missing = state.tileMissing[ts.id];
+    opt.textContent = missing ? `⚠ ${ts.id} (Missing: ${ts.imagePath || ts.id})` : ts.id;
     if (i === state.activeTsIndex) opt.selected = true;
     tsSelect.appendChild(opt);
   });
@@ -624,17 +633,17 @@ function renderTileInspector() {
   if (tile.isAnimated) {
     addRow('type', 'animated', false);
     addRow('frames', tile.frames ? tile.frames.length : 0, false);
-    addRow('interval', tile.frameInterval || 0, false);
+    addRow('interval (ms)', tile.frameInterval > 0 ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS, false);
 
     if (tile.frames && tile.frames.length > 0) {
       const frameTitle = document.createElement('div');
       frameTitle.className = 'inspector-section-title';
-      frameTitle.textContent = 'Frames';
+      frameTitle.textContent = 'Frames (Tilesheet : Index)';
       inspectorDiv.appendChild(frameTitle);
       tile.frames.forEach((fr, fi) => {
         const frow = document.createElement('div');
         frow.className = 'inspector-anim-row';
-        frow.innerHTML = `<strong>#${fi}</strong> ${fr.tilesheet}:<strong>${fr.tileIndex}</strong>`;
+        frow.innerHTML = `<strong>#${fi}</strong>&nbsp;${fr.tilesheet} : <strong>${fr.tileIndex}</strong>`;
         inspectorDiv.appendChild(frow);
       });
     }
@@ -795,7 +804,7 @@ function mapToArrayBuffer(map) {
 
 function parseTbin(ab) {
   const view    = new DataView(ab);
-  const decoder = new TextDecoder('utf8');
+  const decoder = new TextDecoder('utf-8');
   let pos       = 0;
 
   function ru8()  { return view.getUint8(pos++); }
@@ -1318,15 +1327,12 @@ $('btn-anim-prev').addEventListener('click', () => {
 
 function startAnimLoop() {
   if (state.animTimer !== null) return;
-  let lastTime = 0;
-  const FRAME_INTERVAL_MS = 150; // advance anim every 150ms
+  let startTime = null;
   function loop(ts) {
     if (!state.animPreview) { state.animTimer = null; return; }
-    if (ts - lastTime >= FRAME_INTERVAL_MS) {
-      state.animFrame++;
-      lastTime = ts;
-      renderMap();
-    }
+    if (startTime === null) startTime = ts;
+    state.animTime = ts - startTime;
+    renderMap();
     state.animTimer = requestAnimationFrame(loop);
   }
   state.animTimer = requestAnimationFrame(loop);
@@ -1337,7 +1343,7 @@ function stopAnimLoop() {
     cancelAnimationFrame(state.animTimer);
     state.animTimer = null;
   }
-  state.animFrame = 0;
+  state.animTime = 0;
 }
 
 // ─── Season selector ─────────────────────────────────────────────────────
@@ -1521,9 +1527,9 @@ $('ts-load-img-input').addEventListener('change', e => {
     img.onload = () => {
       state.tileImages[ts.id] = img;
       delete state.tileMissing[ts.id];
-      // Update tilesheet dimensions if not already set
-      if (!ts.sheetWidth)  ts.sheetWidth  = img.naturalWidth;
-      if (!ts.sheetHeight) ts.sheetHeight = img.naturalHeight;
+      // Always update sheet dimensions from the actual image (image is source of truth)
+      ts.sheetWidth  = img.naturalWidth;
+      ts.sheetHeight = img.naturalHeight;
       renderAll();
       setStatus(`Loaded image for tilesheet: ${ts.id}`, 'ok');
     };
