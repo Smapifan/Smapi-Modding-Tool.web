@@ -191,7 +191,7 @@ body {
 .panel-header {
   display:        flex;
   align-items:    center;
-  padding:        6px 8px;
+  padding:        6px 10px;
   font-size:      12px;
   font-weight:    600;
   text-transform: uppercase;
@@ -201,24 +201,22 @@ body {
   background:     var(--bg-panel);
   flex-shrink:    0;
   gap:            4px;
-  white-space:    nowrap;
 }
 
 .panel-header-actions {
   display:     flex;
   align-items: center;
-  gap:         2px;
+  gap:         4px;
   margin-left: auto;
   flex-shrink: 0;
 }
 
 .icon-btn {
   background:      transparent;
-  border:          1px solid transparent;
+  border:          none;
   color:           var(--text-dim);
   cursor:          pointer;
   font-size:       14px;
-  font-weight:     600;
   width:           28px;
   height:          28px;
   min-width:       28px;
@@ -227,11 +225,11 @@ body {
   display:         flex;
   align-items:     center;
   justify-content: center;
-  border-radius:   var(--radius);
-  transition:      color 0.15s, background 0.15s, border-color 0.15s;
+  border-radius:   3px;
+  transition:      color 0.15s, background 0.15s;
   flex-shrink:     0;
 }
-.icon-btn:hover  { color: var(--text); background: var(--hover); border-color: var(--border); }
+.icon-btn:hover  { color: var(--text); background: var(--hover); }
 .icon-btn:active { background: var(--selected); }
 
 /* --- Layer list ----------------------------------------------------------- */
