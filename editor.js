@@ -21,13 +21,22 @@ const state = {
   zoom: 1.0,
   pan: { x: 0, y: 0 },
   showGrid: true,
+  showCollision: false,  // collision overlay toggle
+  animPreview: false,    // animation preview toggle
+  animFrame: 0,          // current animation frame index (for preview)
+  animTimer: null,       // requestAnimationFrame handle
+  season: 'spring',      // current season: spring | summer | fall | winter
   hoverTile: null,
+  inspectedTileCoord: null, // { x, y } of last clicked tile (select tool)
   isDragging: false,
   dragStart: null,
   isPainting: false,
+  // touch support
+  lastTouchDist: null,   // for pinch-to-zoom
   undoStack: [],
   redoStack: [],
   tileImages: {},     // id → HTMLImageElement
+  tileMissing: {},    // id → true if image failed/not loaded (for error display)
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,6 +69,7 @@ const tsOverlay    = $('tileset-preview-overlay');
 const canvasArea   = $('canvas-area');
 const layerList    = $('layer-list');
 const propsDiv     = $('props-list');
+const inspectorDiv = $('tile-inspector');
 const statusMsg    = $('status-msg');
 const statusCursor = $('status-cursor');
 const statusTile   = $('status-tile');
@@ -217,34 +227,114 @@ function renderMap() {
     }
   }
 
+  // Collision overlay
+  if (state.showCollision) {
+    for (let li = 0; li < map.layers.length; li++) {
+      const layer = map.layers[li];
+      if (!layer.visible) continue;
+      renderCollisionOverlay(ctx, layer);
+    }
+  }
+
+  // Selected tile highlight (select tool)
+  if (state.inspectedTileCoord) {
+    const layer = getActiveLayer();
+    if (layer) {
+      ctx.strokeStyle = 'rgba(255,255,0,0.9)';
+      ctx.lineWidth = 2 / state.zoom;
+      ctx.strokeRect(
+        state.inspectedTileCoord.x * layer.tileWidth + 1 / state.zoom,
+        state.inspectedTileCoord.y * layer.tileHeight + 1 / state.zoom,
+        layer.tileWidth  - 2 / state.zoom,
+        layer.tileHeight - 2 / state.zoom
+      );
+    }
+  }
+
   ctx.restore();
 }
 
 function renderLayer(ctx, layer) {
   const tw = layer.tileWidth;
   const th = layer.tileHeight;
+  const animF = state.animFrame;
   for (let ty = 0; ty < layer.layerHeight; ty++) {
     for (let tx = 0; tx < layer.layerWidth; tx++) {
       const tile = layer.tiles[ty * layer.layerWidth + tx];
       if (!tile || tile.isNull) continue;
-      drawTile(tile, tx * tw, ty * th, tw, th, ctx);
+      drawTile(tile, tx * tw, ty * th, tw, th, ctx, animF);
     }
   }
 }
 
-function drawTile(tile, dx, dy, dw, dh, ctx) {
+// ─── Collision overlay ────────────────────────────────────────────────────
+// Reads tile properties and draws colored overlays:
+//   Passable:false / no Passable + non-null → red (solid)
+//   Passable:true  → green (walkable)
+//   WaterTile:true → blue
+//   NoRender:true  → semi-transparent gray
+
+function renderCollisionOverlay(ctx, layer) {
+  const tw = layer.tileWidth;
+  const th = layer.tileHeight;
+  for (let ty = 0; ty < layer.layerHeight; ty++) {
+    for (let tx = 0; tx < layer.layerWidth; tx++) {
+      const tile = layer.tiles[ty * layer.layerWidth + tx];
+      if (!tile || tile.isNull) continue;
+      const props = tile.props || {};
+      let color = null;
+      if (props['WaterTile'] === true || props['WaterTile'] === 'T') {
+        color = 'rgba(30,120,255,0.35)';
+      } else if (props['Passable'] === false || props['Passable'] === 'F') {
+        color = 'rgba(220,40,40,0.40)';
+      } else if (props['Passable'] === true || props['Passable'] === 'T') {
+        color = 'rgba(40,200,40,0.28)';
+      } else if (props['NoRender'] === true || props['NoRender'] === 'T') {
+        color = 'rgba(120,120,120,0.35)';
+      } else if (layer.id === 'Buildings' || layer.id === 'Front') {
+        // non-null tiles on Buildings/Front are generally solid
+        color = 'rgba(220,40,40,0.28)';
+      }
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(tx * tw, ty * th, tw, th);
+      }
+    }
+  }
+}
+
+function drawTile(tile, dx, dy, dw, dh, ctx, animF = 0) {
   if (!tile || tile.isNull) return null;
-  const tsId = tile.isAnimated
-    ? (tile.frames && tile.frames[0] ? tile.frames[0].tilesheet : null)
-    : tile.staticTilesheet;
-  const tileIdx = tile.isAnimated
-    ? (tile.frames && tile.frames[0] ? tile.frames[0].tileIndex : -1)
-    : tile.staticIndex;
+
+  let tsId, tileIdx;
+  if (tile.isAnimated && tile.frames && tile.frames.length > 0) {
+    // Cycle through frames when animation preview is active
+    const frameIdx = state.animPreview ? (animF % tile.frames.length) : 0;
+    tsId    = tile.frames[frameIdx].tilesheet;
+    tileIdx = tile.frames[frameIdx].tileIndex;
+  } else {
+    tsId    = tile.staticTilesheet;
+    tileIdx = tile.staticIndex;
+  }
 
   if (!tsId || tileIdx < 0) return null;
 
   const img = state.tileImages[tsId];
-  if (!img || !img.complete) return null;
+  if (!img || !img.complete) {
+    // Missing tileset image: draw a red-X placeholder
+    ctx.fillStyle = 'rgba(60,60,70,0.7)';
+    ctx.fillRect(dx, dy, dw, dh);
+    const s = Math.min(dw, dh) * 0.4;
+    ctx.strokeStyle = '#e94560';
+    ctx.lineWidth = Math.max(1, s * 0.15);
+    ctx.beginPath();
+    ctx.moveTo(dx + dw / 2 - s, dy + dh / 2 - s);
+    ctx.lineTo(dx + dw / 2 + s, dy + dh / 2 + s);
+    ctx.moveTo(dx + dw / 2 + s, dy + dh / 2 - s);
+    ctx.lineTo(dx + dw / 2 - s, dy + dh / 2 + s);
+    ctx.stroke();
+    return null;
+  }
 
   // Find tilesheet metadata
   const ts = state.map.tilesheets.find(t => t.id === tsId);
@@ -262,6 +352,10 @@ function drawTile(tile, dx, dy, dw, dh, ctx) {
 
 function renderTileset() {
   const ts = getActiveTilesheet();
+  // Remove any previous missing-image notice
+  const existingNotice = document.getElementById('ts-missing-notice');
+  if (existingNotice) existingNotice.remove();
+
   if (!ts) {
     tCtx.clearRect(0, 0, tsCanvas.width, tsCanvas.height);
     return;
@@ -272,9 +366,27 @@ function renderTileset() {
     tsCanvas.height = 64;
     tCtx.fillStyle = '#0a0a18';
     tCtx.fillRect(0, 0, 256, 64);
-    tCtx.fillStyle = '#444';
+    // Draw red X
+    tCtx.strokeStyle = '#e94560';
+    tCtx.lineWidth = 3;
+    tCtx.beginPath();
+    tCtx.moveTo(20, 10); tCtx.lineTo(50, 50);
+    tCtx.moveTo(50, 10); tCtx.lineTo(20, 50);
+    tCtx.stroke();
+    tCtx.fillStyle = '#e94560';
     tCtx.font = '12px system-ui';
-    tCtx.fillText('No image loaded', 8, 36);
+    tCtx.fillText('No image – click 🖼 to load', 60, 36);
+
+    // Show a notice below the canvas area
+    const wrap = document.getElementById('tileset-canvas-wrap');
+    const notice = document.createElement('div');
+    notice.className = 'ts-missing-notice';
+    notice.id = 'ts-missing-notice';
+    notice.innerHTML = `⚠ <strong>${ts.id}</strong>: image not loaded. <button id="ts-notice-load">Load image</button>`;
+    wrap.parentElement.insertBefore(notice, wrap.nextSibling);
+    document.getElementById('ts-notice-load').addEventListener('click', () => {
+      $('ts-load-img-input').click();
+    });
     return;
   }
   tsCanvas.width  = img.naturalWidth  || ts.sheetWidth;
@@ -394,8 +506,9 @@ function renderProps() {
     valEl.value = String(v);
     valEl.addEventListener('change', () => {
       pushUndo();
-      delete layer.props[k];
-      layer.props[keyEl.value] = valEl.value;
+      const oldKey = keyEl.value;
+      delete layer.props[oldKey];
+      layer.props[oldKey] = parseTypedValue(valEl.value);
     });
 
     const delBtn = document.createElement('button');
@@ -423,7 +536,7 @@ function renderProps() {
   addBtn.addEventListener('click', () => {
     if (!keyIn.value.trim()) return;
     pushUndo();
-    layer.props[keyIn.value.trim()] = valIn.value;
+    layer.props[keyIn.value.trim()] = parseTypedValue(valIn.value);
     keyIn.value = ''; valIn.value = '';
     renderProps();
   });
@@ -451,11 +564,175 @@ function renderAll() {
   renderTsSelect();
   renderTileset();
   renderProps();
+  renderTileInspector();
   renderMapInfo();
   renderMap();
 }
 
+// ─── Tile inspector ───────────────────────────────────────────────────────
+
+function renderTileInspector() {
+  inspectorDiv.innerHTML = '';
+  if (!state.map || !state.inspectedTileCoord) {
+    inspectorDiv.innerHTML = '<div class="inspector-hint">Click a tile to inspect</div>';
+    return;
+  }
+  const layer = getActiveLayer();
+  if (!layer) {
+    inspectorDiv.innerHTML = '<div class="inspector-hint">No active layer</div>';
+    return;
+  }
+  const { x, y } = state.inspectedTileCoord;
+  if (x < 0 || y < 0 || x >= layer.layerWidth || y >= layer.layerHeight) {
+    inspectorDiv.innerHTML = '<div class="inspector-hint">Out of bounds</div>';
+    return;
+  }
+  const tile = layer.tiles[y * layer.layerWidth + x];
+  if (!tile || tile.isNull) {
+    inspectorDiv.innerHTML = '<div class="inspector-hint">Null tile at ' + x + ',' + y + '</div>';
+    return;
+  }
+
+  // Location
+  const locTitle = document.createElement('div');
+  locTitle.className = 'inspector-section-title';
+  locTitle.textContent = `Tile [${x}, ${y}] — ${layer.id}`;
+  inspectorDiv.appendChild(locTitle);
+
+  // Basic info
+  function addRow(k, v, editable) {
+    const row = document.createElement('div');
+    row.className = 'inspector-row';
+    const keyEl = document.createElement('div');
+    keyEl.className = 'inspector-key';
+    keyEl.textContent = k;
+    const valEl = document.createElement('input');
+    valEl.className = 'inspector-val';
+    valEl.value = String(v);
+    valEl.readOnly = !editable;
+    if (editable) {
+      valEl.addEventListener('change', () => {
+        pushUndo();
+        applyParsedPropToTile(tile, k, valEl.value);
+        renderMap();
+      });
+    }
+    row.append(keyEl, valEl);
+    inspectorDiv.appendChild(row);
+  }
+
+  if (tile.isAnimated) {
+    addRow('type', 'animated', false);
+    addRow('frames', tile.frames ? tile.frames.length : 0, false);
+    addRow('interval', tile.frameInterval || 0, false);
+
+    if (tile.frames && tile.frames.length > 0) {
+      const frameTitle = document.createElement('div');
+      frameTitle.className = 'inspector-section-title';
+      frameTitle.textContent = 'Frames';
+      inspectorDiv.appendChild(frameTitle);
+      tile.frames.forEach((fr, fi) => {
+        const frow = document.createElement('div');
+        frow.className = 'inspector-anim-row';
+        frow.innerHTML = `<strong>#${fi}</strong> ${fr.tilesheet}:<strong>${fr.tileIndex}</strong>`;
+        inspectorDiv.appendChild(frow);
+      });
+    }
+  } else {
+    addRow('type', 'static', false);
+    addRow('tilesheet', tile.staticTilesheet || '', false);
+    addRow('tileIndex', tile.staticIndex !== undefined ? tile.staticIndex : -1, false);
+    addRow('blendMode', tile.blendMode || 0, false);
+  }
+
+  // Tile properties
+  const props = tile.props || {};
+  const propKeys = Object.keys(props);
+  if (propKeys.length > 0) {
+    const propsTitle = document.createElement('div');
+    propsTitle.className = 'inspector-section-title';
+    propsTitle.textContent = 'Tile Properties';
+    inspectorDiv.appendChild(propsTitle);
+
+    propKeys.forEach(k => {
+      const row = document.createElement('div');
+      row.className = 'inspector-row';
+      const keyEl = document.createElement('div');
+      keyEl.className = 'inspector-key';
+      keyEl.textContent = k;
+      const valEl = document.createElement('input');
+      valEl.className = 'inspector-val';
+      valEl.value = String(props[k]);
+      valEl.addEventListener('change', () => {
+        pushUndo();
+        tile.props = tile.props || {};
+        tile.props[k] = parseTypedValue(valEl.value);
+        renderMap();
+      });
+      const delBtn = document.createElement('button');
+      delBtn.className = 'prop-delete';
+      delBtn.title = 'Delete property';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
+        pushUndo();
+        delete tile.props[k];
+        renderTileInspector();
+        renderMap();
+      });
+      row.append(keyEl, valEl, delBtn);
+      inspectorDiv.appendChild(row);
+    });
+  }
+
+  // Add new tile property
+  const addTitle = document.createElement('div');
+  addTitle.className = 'inspector-section-title';
+  addTitle.textContent = 'Add Property';
+  inspectorDiv.appendChild(addTitle);
+
+  const sdvProps = ['Passable', 'WaterTile', 'NoRender', 'NPCBarrier', 'Diggable', 'Tillable',
+                    'Placeable', 'Friction', 'Shadow', 'PathType', 'Action', 'TouchAction'];
+  const addRow2 = document.createElement('div');
+  addRow2.className = 'add-prop-row';
+  const keyIn = document.createElement('input');
+  keyIn.placeholder = 'key';
+  keyIn.setAttribute('list', 'sdv-prop-keys');
+  const dl = document.createElement('datalist');
+  dl.id = 'sdv-prop-keys';
+  sdvProps.forEach(p => { const opt = document.createElement('option'); opt.value = p; dl.appendChild(opt); });
+  const valIn = document.createElement('input');
+  valIn.placeholder = 'value';
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+';
+  addBtn.addEventListener('click', () => {
+    if (!keyIn.value.trim()) return;
+    pushUndo();
+    tile.props = tile.props || {};
+    tile.props[keyIn.value.trim()] = parseTypedValue(valIn.value);
+    keyIn.value = ''; valIn.value = '';
+    renderTileInspector();
+    renderMap();
+  });
+  addRow2.append(keyIn, dl, valIn, addBtn);
+  inspectorDiv.appendChild(addRow2);
+}
+
+function parseTypedValue(str) {
+  if (str === 'true'  || str === 'T') return true;
+  if (str === 'false' || str === 'F') return false;
+  if (str !== '' && !isNaN(Number(str))) {
+    return Number(str);
+  }
+  return str;
+}
+
+function applyParsedPropToTile(tile, key, strVal) {
+  tile.props = tile.props || {};
+  tile.props[key] = parseTypedValue(strVal);
+}
+
 function afterMapChange() {
+  state.inspectedTileCoord = null;
   renderAll();
 }
 
@@ -483,9 +760,25 @@ function loadMapFromArrayBuffer(buf, fileName) {
     state.redoStack    = [];
     state.dirty        = false;
     state.filePath     = fileName || null;
+    state.inspectedTileCoord = null;
+    // Mark all tilesheets as missing (no image loaded yet)
+    state.tileMissing = {};
+    for (const ts of map.tilesheets) {
+      if (!state.tileImages[ts.id]) {
+        state.tileMissing[ts.id] = true;
+      }
+    }
     fitToWindow();
     afterMapChange();
-    setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
+    const missingCount = Object.keys(state.tileMissing).length;
+    if (missingCount > 0) {
+      setStatus(
+        `Loaded: ${fileName || 'map'} — ${missingCount} tilesheet image(s) missing. Use 🖼 to load.`,
+        'warn'
+      );
+    } else {
+      setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
+    }
   } catch (e) {
     setStatus('Error loading .tbin: ' + e.message, 'err');
     console.error(e);
@@ -929,7 +1222,13 @@ function applyTool(tx, ty) {
     case 'erase':   eraseTile(tx, ty);  break;
     case 'fill':    floodFill(tx, ty);  break;
     case 'eyedrop': eyedrop(tx, ty);    break;
-    default: break; // select – no tile op
+    case 'select':
+      // Update tile inspector on click
+      state.inspectedTileCoord = { x: tx, y: ty };
+      renderTileInspector();
+      renderMap(); // update selection highlight
+      break;
+    default: break;
   }
   if (state.map) {
     const layer = getActiveLayer();
@@ -995,6 +1294,70 @@ $('btn-grid').addEventListener('click', () => {
   renderMap();
 });
 $('btn-grid').classList.add('active');
+
+// ─── Collision overlay toggle ────────────────────────────────────────────
+
+$('btn-collision').addEventListener('click', () => {
+  state.showCollision = !state.showCollision;
+  $('btn-collision').classList.toggle('active', state.showCollision);
+  renderMap();
+});
+
+// ─── Animation preview toggle ────────────────────────────────────────────
+
+$('btn-anim-prev').addEventListener('click', () => {
+  state.animPreview = !state.animPreview;
+  $('btn-anim-prev').classList.toggle('active', state.animPreview);
+  if (state.animPreview) {
+    startAnimLoop();
+  } else {
+    stopAnimLoop();
+    renderMap();
+  }
+});
+
+function startAnimLoop() {
+  if (state.animTimer !== null) return;
+  let lastTime = 0;
+  const FRAME_INTERVAL_MS = 150; // advance anim every 150ms
+  function loop(ts) {
+    if (!state.animPreview) { state.animTimer = null; return; }
+    if (ts - lastTime >= FRAME_INTERVAL_MS) {
+      state.animFrame++;
+      lastTime = ts;
+      renderMap();
+    }
+    state.animTimer = requestAnimationFrame(loop);
+  }
+  state.animTimer = requestAnimationFrame(loop);
+}
+
+function stopAnimLoop() {
+  if (state.animTimer !== null) {
+    cancelAnimationFrame(state.animTimer);
+    state.animTimer = null;
+  }
+  state.animFrame = 0;
+}
+
+// ─── Season selector ─────────────────────────────────────────────────────
+
+document.querySelectorAll('.season-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.season = btn.dataset.season;
+    // Update map season property if a map is loaded and season prop exists
+    if (state.map) {
+      state.map.props = state.map.props || {};
+      if ('season' in state.map.props) {
+        pushUndo();
+        state.map.props.season = state.season;
+      }
+    }
+    setStatus(`Season: ${state.season}`, 'ok');
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Header buttons
@@ -1132,8 +1495,76 @@ $('btn-ts-del').addEventListener('click', () => {
   const id = state.map.tilesheets[state.activeTsIndex].id;
   state.map.tilesheets.splice(state.activeTsIndex, 1);
   delete state.tileImages[id];
+  delete state.tileMissing[id];
   state.activeTsIndex = 0;
   renderAll();
+});
+
+// ─── Load image for existing tilesheet ───────────────────────────────────
+
+$('btn-ts-load-img').addEventListener('click', () => {
+  if (!state.map || !state.map.tilesheets.length) {
+    setStatus('No tilesheet selected', 'warn');
+    return;
+  }
+  $('ts-load-img-input').click();
+});
+
+$('ts-load-img-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ts = getActiveTilesheet();
+  if (!ts) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      state.tileImages[ts.id] = img;
+      delete state.tileMissing[ts.id];
+      // Update tilesheet dimensions if not already set
+      if (!ts.sheetWidth)  ts.sheetWidth  = img.naturalWidth;
+      if (!ts.sheetHeight) ts.sheetHeight = img.naturalHeight;
+      renderAll();
+      setStatus(`Loaded image for tilesheet: ${ts.id}`, 'ok');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+// ─── Map properties modal ────────────────────────────────────────────────
+
+$('btn-map-props').addEventListener('click', () => {
+  if (!state.map) { setStatus('Open or create a map first', 'warn'); return; }
+  const props = state.map.props || {};
+  $('mp-id').value       = state.map.id   || '';
+  $('mp-desc').value     = state.map.desc || '';
+  $('mp-music').value    = String(props['Music']    || '');
+  $('mp-ambience').value = String(props['Ambience'] || '');
+  $('mp-season').value   = String(props['season']   || '');
+  $('modal-map-props').classList.remove('hidden');
+});
+
+$('mp-cancel').addEventListener('click', () => $('modal-map-props').classList.add('hidden'));
+$('mp-ok').addEventListener('click', () => {
+  if (!state.map) return;
+  pushUndo();
+  state.map.id   = $('mp-id').value.trim()   || state.map.id;
+  state.map.desc = $('mp-desc').value.trim();
+  state.map.props = state.map.props || {};
+  const music    = $('mp-music').value.trim();
+  const ambience = $('mp-ambience').value.trim();
+  const season   = $('mp-season').value;
+  if (music)    state.map.props['Music']    = music;
+  else          delete state.map.props['Music'];
+  if (ambience) state.map.props['Ambience'] = ambience;
+  else          delete state.map.props['Ambience'];
+  if (season)   state.map.props['season']   = season;
+  else          delete state.map.props['season'];
+  $('modal-map-props').classList.add('hidden');
+  renderAll();
+  setStatus(`Map properties updated: ${state.map.id}`, 'ok');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1176,6 +1607,73 @@ function setActiveTool(tool) {
   const btn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
   if (btn) btn.click();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Touch events (mobile / tablet support)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getTouchPos(e) {
+  const rect = mapCanvas.getBoundingClientRect();
+  const t = e.touches[0];
+  return { clientX: t.clientX, clientY: t.clientY };
+}
+
+mapCanvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 2) {
+    // Pinch-to-zoom start
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    state.lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    return;
+  }
+  state.lastTouchDist = null;
+  const pos = getTouchPos(e);
+  const tc  = canvasTileCoords(pos);
+  if (!tc) return;
+  state.isPainting = true;
+  pushUndo();
+  applyTool(tc.x, tc.y);
+}, { passive: false });
+
+mapCanvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 2 && state.lastTouchDist !== null) {
+    // Pinch-to-zoom
+    const dx   = e.touches[0].clientX - e.touches[1].clientX;
+    const dy   = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const factor = dist / state.lastTouchDist;
+    state.lastTouchDist = dist;
+    // Zoom toward midpoint
+    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    const rect = mapCanvas.getBoundingClientRect();
+    const px = mx - rect.left;
+    const py = my - rect.top;
+    const before = { x: (px - state.pan.x) / state.zoom, y: (py - state.pan.y) / state.zoom };
+    state.zoom = Math.max(0.1, Math.min(8, state.zoom * factor));
+    state.pan.x = px - before.x * state.zoom;
+    state.pan.y = py - before.y * state.zoom;
+    zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+    renderMap();
+    return;
+  }
+  if (!state.isPainting) return;
+  const pos = getTouchPos(e);
+  const tc  = canvasTileCoords(pos);
+  state.hoverTile = tc;
+  if (tc) {
+    statusCursor.textContent = `Tile: ${tc.x},${tc.y}`;
+    applyTool(tc.x, tc.y);
+  }
+}, { passive: false });
+
+mapCanvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  state.isPainting = false;
+  state.lastTouchDist = null;
+}, { passive: false });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Drag & drop .tbin files
@@ -1224,6 +1722,7 @@ new ResizeObserver(resizeCanvas).observe(canvasArea);
   renderLayerList();
   renderTsSelect();
   renderProps();
+  renderTileInspector();
   renderMapInfo();
   setStatus('Ready – open a .tbin file or create a new map (Ctrl+N)', 'ok');
 
