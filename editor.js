@@ -91,6 +91,34 @@ const tCtx = tsCanvas.getContext('2d');
 // Map model helpers
 // ===========================================================================
 
+/**
+ * Calculate tiles per row for a tilesheet, accounting for margin/spacing.
+ * margin:  pixels around the entire sheet edge (applied once on each side)
+ * spacing: pixels between individual tiles
+ */
+function getTilesPerRow(ts) {
+  const margin  = ts.margin  || 0;
+  const spacing = ts.spacing || 0;
+  if (margin === 0 && spacing === 0) {
+    return Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  }
+  return Math.max(1, Math.floor((ts.sheetWidth - 2 * margin + spacing) / (ts.tileWidth + spacing)));
+}
+
+/** Pixel x-coordinate of the left edge of tile at column tileX. */
+function getTilePixelX(ts, tileX) {
+  const margin  = ts.margin  || 0;
+  const spacing = ts.spacing || 0;
+  return margin + tileX * (ts.tileWidth + spacing);
+}
+
+/** Pixel y-coordinate of the top edge of tile at row tileY. */
+function getTilePixelY(ts, tileY) {
+  const margin  = ts.margin  || 0;
+  const spacing = ts.spacing || 0;
+  return margin + tileY * (ts.tileHeight + spacing);
+}
+
 function createEmptyMap(id = 'NewMap', desc = '', w = 30, h = 20, tileW = 16, tileH = 16) {
   return {
     id,
@@ -346,9 +374,9 @@ function drawTile(tile, dx, dy, dw, dh, ctx) {
   const ts = state.map.tilesheets.find(t => t.id === tsId);
   if (!ts) return null;
 
-  const tilesPerRow = Math.floor(ts.sheetWidth / ts.tileWidth) || 1;
-  const sx = (tileIdx % tilesPerRow) * ts.tileWidth;
-  const sy = Math.floor(tileIdx / tilesPerRow) * ts.tileHeight;
+  const tilesPerRow = getTilesPerRow(ts);
+  const sx = getTilePixelX(ts, tileIdx % tilesPerRow);
+  const sy = getTilePixelY(ts, Math.floor(tileIdx / tilesPerRow));
 
   ctx.drawImage(img, sx, sy, ts.tileWidth, ts.tileHeight, dx, dy, dw, dh);
   return true;
@@ -401,14 +429,18 @@ function renderTileset() {
   tsCanvas.height = img.naturalHeight || ts.sheetHeight;
   tCtx.drawImage(img, 0, 0);
 
-  // Grid
+  // Grid (with margin/spacing support)
   tCtx.strokeStyle = 'rgba(255,255,255,0.15)';
   tCtx.lineWidth = 0.5;
-  for (let gx = 0; gx <= tsCanvas.width; gx += ts.tileWidth) {
-    tCtx.beginPath(); tCtx.moveTo(gx, 0); tCtx.lineTo(gx, tsCanvas.height); tCtx.stroke();
+  const tilesPerRowG = getTilesPerRow(ts);
+  const tilesPerColG = Math.max(1, Math.floor((tsCanvas.height - 2 * (ts.margin || 0) + (ts.spacing || 0)) / (ts.tileHeight + (ts.spacing || 0))));
+  for (let gx = 0; gx <= tilesPerRowG; gx++) {
+    const px = getTilePixelX(ts, gx);
+    tCtx.beginPath(); tCtx.moveTo(px, 0); tCtx.lineTo(px, tsCanvas.height); tCtx.stroke();
   }
-  for (let gy = 0; gy <= tsCanvas.height; gy += ts.tileHeight) {
-    tCtx.beginPath(); tCtx.moveTo(0, gy); tCtx.lineTo(tsCanvas.width, gy); tCtx.stroke();
+  for (let gy = 0; gy <= tilesPerColG; gy++) {
+    const py = getTilePixelY(ts, gy);
+    tCtx.beginPath(); tCtx.moveTo(0, py); tCtx.lineTo(tsCanvas.width, py); tCtx.stroke();
   }
 
   // Selection highlight
@@ -418,8 +450,8 @@ function renderTileset() {
 function updateTsOverlay() {
   const ts = getActiveTilesheet();
   if (!ts) { tsOverlay.style.display = 'none'; return; }
-  const x = state.selTile.x * ts.tileWidth;
-  const y = state.selTile.y * ts.tileHeight;
+  const x = getTilePixelX(ts, state.selTile.x);
+  const y = getTilePixelY(ts, state.selTile.y);
   tsOverlay.style.display  = 'block';
   tsOverlay.style.left     = x + 'px';
   tsOverlay.style.top      = y + 'px';
@@ -785,7 +817,7 @@ function loadMapFromArrayBuffer(buf, fileName) {
         `Loaded: ${fileName || 'map'} - ${missingCount} tilesheet image(s) missing. Use [Img] to load.`,
         'warn'
       );
-      // Auto-show missing tilesheet dialog for first missing tilesheet
+      // Auto-show missing tilesheet dialog for any missing tilesheet
       showMissingTilesheetDialog();
     } else {
       setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
@@ -1121,7 +1153,7 @@ function paintTile(tx, ty) {
   const layer = getActiveLayer();
   const ts    = getActiveTilesheet();
   if (!layer || !ts) return;
-  const tilesPerRow = Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  const tilesPerRow = getTilesPerRow(ts);
   const idx   = state.selTile.y * tilesPerRow + state.selTile.x;
   const tileIdx = ty * layer.layerWidth + tx;
   layer.tiles[tileIdx] = {
@@ -1147,7 +1179,7 @@ function floodFill(tx, ty) {
   const ts    = getActiveTilesheet();
   if (!layer || !ts) return;
 
-  const tilesPerRow = Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  const tilesPerRow = getTilesPerRow(ts);
   const newIdx      = state.selTile.y * tilesPerRow + state.selTile.x;
   const targetTile  = layer.tiles[ty * layer.layerWidth + tx];
   const targetKey   = tileKey(targetTile);
@@ -1193,7 +1225,7 @@ function eyedrop(tx, ty) {
   const tsI = state.map.tilesheets.findIndex(t => t.id === tsId);
   if (tsI < 0) return;
   const ts = state.map.tilesheets[tsI];
-  const tilesPerRow = Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  const tilesPerRow = getTilesPerRow(ts);
   state.activeTsIndex = tsI;
   state.selTile = { x: tileIdx % tilesPerRow, y: Math.floor(tileIdx / tilesPerRow) };
   tsSelect.value = tsI;
@@ -1301,12 +1333,18 @@ function applyTool(tx, ty) {
 tsCanvas.addEventListener('click', e => {
   const ts = getActiveTilesheet();
   if (!ts) return;
-  const rect = tsCanvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) / ts.tileWidth);
-  const y = Math.floor((e.clientY - rect.top)  / ts.tileHeight);
+  const rect    = tsCanvas.getBoundingClientRect();
+  const px      = e.clientX - rect.left;
+  const py      = e.clientY - rect.top;
+  const margin  = ts.margin  || 0;
+  const spacing = ts.spacing || 0;
+  const tileStep = ts.tileWidth  + spacing;
+  const tileStepY= ts.tileHeight + spacing;
+  const x = Math.max(0, Math.floor((px - margin) / tileStep));
+  const y = Math.max(0, Math.floor((py - margin) / tileStepY));
   state.selTile = { x, y };
   updateTsOverlay();
-  setStatus(`Selected tile ${x},${y} in ${ts.id}`, 'ok');
+  setStatus('Selected tile ' + x + ',' + y + ' in ' + ts.id, 'ok');
 });
 
 tsSelect.addEventListener('change', () => {
@@ -1654,19 +1692,23 @@ tsCanvas.addEventListener('mousemove', e => {
   if (!ts) { tsTileTooltip.style.display = 'none'; return; }
   const img = state.tileImages[ts.id];
   if (!img || !img.complete) { tsTileTooltip.style.display = 'none'; return; }
-  const rect = tsCanvas.getBoundingClientRect();
-  const cx = e.clientX - rect.left;
-  const cy = e.clientY - rect.top;
-  const tx = Math.floor(cx / ts.tileWidth);
-  const ty = Math.floor(cy / ts.tileHeight);
-  const tilesPerRow = Math.max(1, Math.floor(ts.sheetWidth / ts.tileWidth));
+  const rect    = tsCanvas.getBoundingClientRect();
+  const cx      = e.clientX - rect.left;
+  const cy      = e.clientY - rect.top;
+  const margin  = ts.margin  || 0;
+  const spacing = ts.spacing || 0;
+  const tileStep = ts.tileWidth  + spacing;
+  const tileStepY= ts.tileHeight + spacing;
+  const tx = Math.max(0, Math.floor((cx - margin) / tileStep));
+  const ty = Math.max(0, Math.floor((cy - margin) / tileStepY));
+  const tilesPerRow = getTilesPerRow(ts);
   const idx = ty * tilesPerRow + tx;
   tsTileTooltip.textContent = 'Tile #' + idx + ' (' + tx + ',' + ty + ')';
   tsTileTooltip.style.display = 'block';
   // Position inside the wrap, relative to canvas
   const wrapRect = tsCanvasWrap.getBoundingClientRect();
-  let tipX = (e.clientX - wrapRect.left) + 10;
-  let tipY = (e.clientY - wrapRect.top)  + 14;
+  const tipX = (e.clientX - wrapRect.left) + 10;
+  const tipY = (e.clientY - wrapRect.top)  + 14;
   tsTileTooltip.style.left = tipX + 'px';
   tsTileTooltip.style.top  = tipY + 'px';
 });
@@ -1909,10 +1951,11 @@ mapCanvas.addEventListener('touchend', e => {
 // ===========================================================================
 
 document.addEventListener('dragover', e => {
-  // Don't show body drag-over highlight when over the tileset canvas wrap
-  if (tsCanvasWrap.contains(e.target)) return;
-  e.preventDefault();
-  document.body.classList.add('drag-over');
+  e.preventDefault(); // Always call to allow drops anywhere
+  // Show body drag-over highlight only when NOT over the tileset canvas wrap
+  if (!tsCanvasWrap.contains(e.target)) {
+    document.body.classList.add('drag-over');
+  }
 });
 document.addEventListener('dragleave', e => {
   if (!e.relatedTarget) document.body.classList.remove('drag-over');
