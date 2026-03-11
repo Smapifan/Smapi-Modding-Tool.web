@@ -1,0 +1,36 @@
+<!-- Missing Tilesheet Warning Modal
+     Component: TilesheetModal
+     Injected into the host page via index.html or MAUI WebView HTML source.
+-->
+<div
+  class="modal-overlay hidden"
+  id="modal-ts-missing"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="ts-missing-title"
+  data-component="tilesheet-modal"
+>
+  <div class="modal ts-modal">
+
+    <!-- Header -->
+    <div class="ts-modal__header">
+      <h2 class="ts-modal__title" id="ts-missing-title">Tilesheet Image Missing</h2>
+    </div>
+
+    <!-- Body -->
+    <div class="ts-modal__body">
+      <p class="ts-modal__message" id="ts-missing-msg"></p>
+    </div>
+
+    <!-- Footer / Actions -->
+    <div class="ts-modal__footer modal-actions">
+      <button class="btn-secondary ts-modal__btn" id="ts-missing-cancel" type="button">
+        Cancel
+      </button>
+      <button class="btn-primary ts-modal__btn" id="ts-missing-select" type="button">
+        Select Image
+      </button>
+    </div>
+
+  </div>
+</div>

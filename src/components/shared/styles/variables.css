@@ -1,0 +1,37 @@
+/* ===========================================================================
+   Global CSS Variables
+   Shared across all components. Extends the root variables from style.css.
+   =========================================================================== */
+
+:root {
+  /* Modal-specific variables (harmonise with the app's dark theme) */
+  --modal-bg:              var(--bg-mid,     #16213e);
+  --modal-overlay-bg:      rgba(0, 0, 0, 0.7);
+  --modal-border:          var(--border,     #2a4080);
+  --modal-shadow:          0 8px 32px rgba(0, 0, 0, 0.5);
+  --modal-radius:          8px;
+  --modal-max-width:       520px;
+  --modal-padding:         24px;
+  --modal-z-index:         100;
+
+  /* Typography */
+  --modal-title-color:     var(--accent2,    #f5a623);
+  --modal-title-size:      16px;
+  --modal-msg-size:        13px;
+  --modal-line-height:     1.5;
+
+  /* Button base */
+  --btn-padding-v:         7px;
+  --btn-padding-h:         20px;
+  --btn-radius:            var(--radius, 6px);
+  --btn-font-size:         13px;
+  --btn-min-width:         90px;
+  --btn-transition:        opacity 0.15s, background 0.15s;
+
+  /* Spacing */
+  --modal-actions-gap:     8px;
+  --modal-actions-mt:      20px;
+
+  /* Responsive breakpoint */
+  --breakpoint-mobile:     480px;
+}
