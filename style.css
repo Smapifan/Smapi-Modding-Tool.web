@@ -616,6 +616,12 @@ body.drag-over #canvas-area {
 
 .inspector-anim-row strong { color: var(--text); }
 
+.inspector-anim-row.active {
+  background: rgba(255, 200, 0, 0.12);
+  border-radius: 3px;
+  padding-left: 4px;
+}
+
 /* --- Tileset error placeholder -------------------------------------------- */
 .ts-missing-notice {
   display:     flex;

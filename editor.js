@@ -37,6 +37,7 @@ const state = {
   redoStack: [],
   tileImages: {},     // id -> HTMLImageElement
   tileMissing: {},    // id -> true if image failed/not loaded (for error display)
+  tsCache: {},        // id -> tilesheet metadata (cache for drawTile lookups)
 };
 
 // ===========================================================================
@@ -311,11 +312,13 @@ function renderLayer(ctx, layer) {
 }
 
 // --- Collision overlay ----------------------------------------------------
-// Reads tile properties and draws colored overlays:
-//   Passable:false / no Passable + non-null -> red (solid)
-//   Passable:true  -> green (walkable)
-//   WaterTile:true -> blue
-//   NoRender:true  -> semi-transparent gray
+// Reads tile properties and draws colored overlays (checked in priority order):
+//   1. WaterTile:true -> blue
+//   2. NPCBarrier:true -> red (NPC barrier)
+//   3. Passable:false -> red (solid)
+//   4. Passable:true  -> green (walkable)
+//   5. NoRender:true  -> semi-transparent gray
+//   6. Buildings/Front layer tiles (fallback) -> red
 
 function renderCollisionOverlay(ctx, layer) {
   const tw = layer.tileWidth;
@@ -328,10 +331,12 @@ function renderCollisionOverlay(ctx, layer) {
       let color = null;
       if (props['WaterTile'] === true || props['WaterTile'] === 'T') {
         color = 'rgba(30,120,255,0.35)';
+      } else if (props['NPCBarrier'] === true || props['NPCBarrier'] === 'T') {
+        color = 'rgba(220,40,40,0.35)';
       } else if (props['Passable'] === false || props['Passable'] === 'F') {
-        color = 'rgba(220,40,40,0.40)';
+        color = 'rgba(220,40,40,0.35)';
       } else if (props['Passable'] === true || props['Passable'] === 'T') {
-        color = 'rgba(40,200,40,0.28)';
+        color = 'rgba(40,200,40,0.30)';
       } else if (props['NoRender'] === true || props['NoRender'] === 'T') {
         color = 'rgba(120,120,120,0.35)';
       } else if (layer.id === 'Buildings' || layer.id === 'Front') {
@@ -357,14 +362,18 @@ function drawTile(tile, dx, dy, dw, dh, ctx) {
       const interval = (tile.frameInterval > 0) ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS;
       frameIdx = Math.floor(state.animTime / interval) % tile.frames.length;
     }
-    tsId    = tile.frames[frameIdx].tilesheet;
-    tileIdx = tile.frames[frameIdx].tileIndex;
+    // Clamp frameIdx within valid range for safety
+    frameIdx = Math.max(0, Math.min(frameIdx, tile.frames.length - 1));
+    const frame = tile.frames[frameIdx];
+    if (!frame) return null;
+    tsId    = frame.tilesheet;
+    tileIdx = frame.tileIndex;
   } else {
     tsId    = tile.staticTilesheet;
     tileIdx = tile.staticIndex;
   }
 
-  if (!tsId || tileIdx < 0) return null;
+  if (!tsId || tileIdx == null || tileIdx < 0) return null;
 
   const img = state.tileImages[tsId];
   if (!img || !img.complete) {
@@ -383,9 +392,13 @@ function drawTile(tile, dx, dy, dw, dh, ctx) {
     return null;
   }
 
-  // Find tilesheet metadata
-  const ts = state.map.tilesheets.find(t => t.id === tsId);
-  if (!ts) return null;
+  // Find tilesheet metadata (cached for performance)
+  let ts = state.tsCache[tsId];
+  if (!ts) {
+    ts = state.map.tilesheets.find(t => t.id === tsId);
+    if (!ts) return null;
+    state.tsCache[tsId] = ts;
+  }
 
   const tilesPerRow = getTilesPerRow(ts);
   const sx = getTilePixelX(ts, tileIdx % tilesPerRow);
@@ -625,7 +638,12 @@ function renderAll() {
 
 // --- Tile inspector -------------------------------------------------------
 
+// Cached frame row elements for the current inspected animated tile,
+// populated by renderTileInspector() and used by updateAnimInspector().
+let _inspectorAnimRows = [];
+
 function renderTileInspector() {
+  _inspectorAnimRows = [];
   inspectorDiv.innerHTML = '';
   if (!state.map || !state.inspectedTileCoord) {
     inspectorDiv.innerHTML = '<div class="inspector-hint">Click a tile to inspect</div>';
@@ -680,6 +698,24 @@ function renderTileInspector() {
     addRow('frames', tile.frames ? tile.frames.length : 0, false);
     addRow('interval (ms)', tile.frameInterval > 0 ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS, false);
 
+    // Current frame indicator (updated live by updateAnimInspector during animation)
+    const cfRow = document.createElement('div');
+    cfRow.className = 'inspector-row';
+    const cfKey = document.createElement('div');
+    cfKey.className = 'inspector-key';
+    cfKey.textContent = 'current frame';
+    const cfVal = document.createElement('div');
+    cfVal.className = 'inspector-val';
+    cfVal.id = 'inspector-anim-curframe';
+    if (state.animPreview && tile.frames && tile.frames.length > 0) {
+      const interval = (tile.frameInterval > 0) ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS;
+      cfVal.textContent = String(Math.floor(state.animTime / interval) % tile.frames.length);
+    } else {
+      cfVal.textContent = '0';
+    }
+    cfRow.append(cfKey, cfVal);
+    inspectorDiv.appendChild(cfRow);
+
     if (tile.frames && tile.frames.length > 0) {
       const frameTitle = document.createElement('div');
       frameTitle.className = 'inspector-section-title';
@@ -688,8 +724,10 @@ function renderTileInspector() {
       tile.frames.forEach((fr, fi) => {
         const frow = document.createElement('div');
         frow.className = 'inspector-anim-row';
+        frow.dataset.frameIdx = fi;
         frow.innerHTML = `<strong>#${fi}</strong>&nbsp;${fr.tilesheet} : <strong>${fr.tileIndex}</strong>`;
         inspectorDiv.appendChild(frow);
+        _inspectorAnimRows.push(frow);
       });
     }
   } else {
@@ -794,6 +832,7 @@ function applyParsedPropToTile(tile, key, strVal) {
 
 function afterMapChange() {
   state.inspectedTileCoord = null;
+  state.tsCache = {};
   renderAll();
 }
 
@@ -1460,11 +1499,19 @@ function startAnimLoop() {
   if (state.animTimer !== null) return;
   let startTime = null;
   function loop(ts) {
-    if (!state.animPreview) { state.animTimer = null; return; }
-    if (startTime === null) startTime = ts;
-    state.animTime = ts - startTime;
-    renderMap();
-    state.animTimer = requestAnimationFrame(loop);
+    try {
+      if (!state.animPreview) { state.animTimer = null; return; }
+      if (startTime === null) startTime = ts;
+      state.animTime = ts - startTime;
+      renderMap();
+      updateAnimInspector();
+      state.animTimer = requestAnimationFrame(loop);
+    } catch (e) {
+      console.error('Animation loop error:', e);
+      state.animPreview = false;
+      state.animTimer = null;
+      $('btn-anim-prev').classList.remove('active');
+    }
   }
   state.animTimer = requestAnimationFrame(loop);
 }
@@ -1475,6 +1522,26 @@ function stopAnimLoop() {
     state.animTimer = null;
   }
   state.animTime = 0;
+}
+
+// Lightweight update of the current-frame indicator in the tile inspector.
+// Called every animation frame to avoid a full inspector rebuild.
+function updateAnimInspector() {
+  if (!state.animPreview || !state.inspectedTileCoord) return;
+  const layer = getActiveLayer();
+  if (!layer) return;
+  const { x, y } = state.inspectedTileCoord;
+  if (x < 0 || y < 0 || x >= layer.layerWidth || y >= layer.layerHeight) return;
+  const tile = layer.tiles[y * layer.layerWidth + x];
+  if (!tile || tile.isNull || !tile.isAnimated || !tile.frames || tile.frames.length === 0) return;
+  const interval = (tile.frameInterval > 0) ? tile.frameInterval : DEFAULT_FRAME_INTERVAL_MS;
+  const frameIdx = Math.floor(state.animTime / interval) % tile.frames.length;
+  const curFrameEl = document.getElementById('inspector-anim-curframe');
+  if (curFrameEl) curFrameEl.textContent = String(frameIdx);
+  // Highlight the active frame row using cached elements (no querySelectorAll at 60fps)
+  for (let i = 0; i < _inspectorAnimRows.length; i++) {
+    _inspectorAnimRows[i].classList.toggle('active', i === frameIdx);
+  }
 }
 
 // --- Season selector -----------------------------------------------------
