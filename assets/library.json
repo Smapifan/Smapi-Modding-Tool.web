@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "description": "Stardew Valley Map Editor – Asset Library catalog",
+  "tilesheets": [
+    {
+      "id": "spring_outdoors",
+      "aliases": ["spring_outdoors", "spring"],
+      "path": "assets/tilesheets/spring_outdoors.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Spring outdoor tileset (grass, paths, fences, water)"
+    },
+    {
+      "id": "summer_outdoors",
+      "aliases": ["summer_outdoors", "summer"],
+      "path": "assets/tilesheets/summer_outdoors.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Summer outdoor tileset"
+    },
+    {
+      "id": "fall_outdoors",
+      "aliases": ["fall_outdoors", "fall"],
+      "path": "assets/tilesheets/fall_outdoors.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Fall outdoor tileset"
+    },
+    {
+      "id": "winter_outdoors",
+      "aliases": ["winter_outdoors", "winter"],
+      "path": "assets/tilesheets/winter_outdoors.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Winter outdoor tileset"
+    },
+    {
+      "id": "mine_stone_tile_sheet",
+      "aliases": ["mine_stone_tile_sheet", "mine"],
+      "path": "assets/tilesheets/mine_stone_tile_sheet.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Mine/dungeon tileset"
+    },
+    {
+      "id": "Flooring",
+      "aliases": ["flooring", "Flooring"],
+      "path": "assets/tilesheets/Flooring.png",
+      "tileWidth": 32,
+      "tileHeight": 32,
+      "description": "Indoor flooring patterns"
+    },
+    {
+      "id": "walls_and_floors",
+      "aliases": ["walls_and_floors", "wallsandfloors"],
+      "path": "assets/tilesheets/walls_and_floors.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Interior walls and floors"
+    },
+    {
+      "id": "LooseSprites/Lighting",
+      "aliases": ["lighting", "LooseSprites/Lighting"],
+      "path": "assets/tilesheets/Lighting.png",
+      "tileWidth": 10,
+      "tileHeight": 10,
+      "description": "Lighting sprites"
+    },
+    {
+      "id": "paths",
+      "aliases": ["paths"],
+      "path": "assets/tilesheets/paths.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Path tiles"
+    },
+    {
+      "id": "furniture",
+      "aliases": ["furniture"],
+      "path": "assets/tilesheets/furniture.png",
+      "tileWidth": 16,
+      "tileHeight": 16,
+      "description": "Furniture sprites"
+    }
+  ],
+  "maps": [
+    {
+      "id": "Farm",
+      "path": "assets/maps/Farm.tbin",
+      "description": "Sample farm map"
+    },
+    {
+      "id": "Mine",
+      "path": "assets/maps/Mine.tbin",
+      "description": "Sample mine level map"
+    }
+  ],
+  "objects": []
+}
