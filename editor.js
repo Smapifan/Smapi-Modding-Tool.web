@@ -689,15 +689,21 @@ function renderTileInspector() {
   // Tile properties
   const props = tile.props || {};
   const propKeys = Object.keys(props);
-  if (propKeys.length > 0) {
-    const propsTitle = document.createElement('div');
-    propsTitle.className = 'inspector-section-title';
-    propsTitle.textContent = 'Tile Properties';
-    inspectorDiv.appendChild(propsTitle);
+  const propsTitle = document.createElement('div');
+  propsTitle.className = 'inspector-section-title';
+  propsTitle.textContent = 'Tile Properties';
+  inspectorDiv.appendChild(propsTitle);
 
+  if (propKeys.length === 0) {
+    const noProps = document.createElement('div');
+    noProps.className = 'inspector-hint';
+    noProps.style.padding = '4px 0';
+    noProps.textContent = '(no tile properties)';
+    inspectorDiv.appendChild(noProps);
+  } else {
     propKeys.forEach(k => {
       const row = document.createElement('div');
-      row.className = 'inspector-row';
+      row.className = 'inspector-row-editable';
       const keyEl = document.createElement('div');
       keyEl.className = 'inspector-key';
       keyEl.textContent = k;
@@ -713,7 +719,7 @@ function renderTileInspector() {
       const delBtn = document.createElement('button');
       delBtn.className = 'prop-delete';
       delBtn.title = 'Delete property';
-      delBtn.textContent = 'X';
+      delBtn.textContent = '✕';
       delBtn.addEventListener('click', () => {
         pushUndo();
         delete tile.props[k];
@@ -731,8 +737,9 @@ function renderTileInspector() {
   addTitle.textContent = 'Add Property';
   inspectorDiv.appendChild(addTitle);
 
-  const sdvProps = ['Passable', 'WaterTile', 'NoRender', 'NPCBarrier', 'Diggable', 'Tillable',
-                    'Placeable', 'Friction', 'Shadow', 'PathType', 'Action', 'TouchAction'];
+  const sdvProps = ['Passable', 'WaterTile', 'NoRender', 'NPCBarrier', 'Diggable', 'CannotPass',
+                    'Tillable', 'Placeable', 'Friction', 'Shadow', 'PathType',
+                    'Action', 'TouchAction', 'Layer'];
   const addRow2 = document.createElement('div');
   addRow2.className = 'add-prop-row';
   const keyIn = document.createElement('input');
@@ -915,7 +922,8 @@ function parseTbin(ab) {
     const ts = { id: rstr(), desc: rstr(), imagePath: rstr() };
     const sh = rv2i(); ts.sheetWidth = sh.x; ts.sheetHeight = sh.y;
     const tl = rv2i(); ts.tileWidth  = tl.x; ts.tileHeight  = tl.y;
-    rv2i(); rv2i(); // margin / spacing (discard)
+    const mg = rv2i(); ts.margin   = mg.x; ts.marginY  = mg.y;
+    const sp = rv2i(); ts.spacing  = sp.x; ts.spacingY = sp.y;
     ts.props = readProps();
     map.tilesheets.push(ts);
   }
@@ -1010,7 +1018,8 @@ function encodeTbin(map) {
     wstr(ts.id || ''); wstr(ts.desc || ''); wstr(ts.imagePath || '');
     wv2i({ x: ts.sheetWidth || 0,  y: ts.sheetHeight || 0 });
     wv2i({ x: ts.tileWidth  || 16, y: ts.tileHeight  || 16 });
-    wv2i({ x: 0, y: 0 }); wv2i({ x: 0, y: 0 }); // margin / spacing
+    wv2i({ x: ts.margin  || 0, y: ts.marginY  || 0 });
+    wv2i({ x: ts.spacing || 0, y: ts.spacingY || 0 });
     wprops(ts.props);
   }
 
@@ -1113,8 +1122,21 @@ function exportJson() {
 // Zoom / Pan
 // ===========================================================================
 
-function setZoom(z) {
-  state.zoom = Math.max(0.1, Math.min(8, z));
+function setZoom(z, pivotX, pivotY) {
+  const oldZoom = state.zoom;
+  const newZoom = Math.max(0.1, Math.min(8, z));
+  if (newZoom === oldZoom) return;
+
+  // Zoom toward the pivot point; default to centre of the canvas area
+  if (pivotX === undefined) {
+    const rect = canvasArea.getBoundingClientRect();
+    pivotX = rect.width  / 2;
+    pivotY = rect.height / 2;
+  }
+
+  state.pan.x = pivotX - (pivotX - state.pan.x) * (newZoom / oldZoom);
+  state.pan.y = pivotY - (pivotY - state.pan.y) * (newZoom / oldZoom);
+  state.zoom  = newZoom;
   zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
   renderMap();
 }
@@ -1285,16 +1307,8 @@ mapCanvas.addEventListener('mouseleave', () => {
 mapCanvas.addEventListener('wheel', e => {
   e.preventDefault();
   const factor = e.deltaY < 0 ? 1.1 : 0.9;
-  // Zoom toward mouse position
   const rect = mapCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const before = { x: (mx - state.pan.x) / state.zoom, y: (my - state.pan.y) / state.zoom };
-  state.zoom = Math.max(0.1, Math.min(8, state.zoom * factor));
-  state.pan.x = mx - before.x * state.zoom;
-  state.pan.y = my - before.y * state.zoom;
-  zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
-  renderMap();
+  setZoom(state.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
 }, { passive: false });
 
 function applyTool(tx, ty) {
@@ -1920,14 +1934,7 @@ mapCanvas.addEventListener('touchmove', e => {
     const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     const rect = mapCanvas.getBoundingClientRect();
-    const px = mx - rect.left;
-    const py = my - rect.top;
-    const before = { x: (px - state.pan.x) / state.zoom, y: (py - state.pan.y) / state.zoom };
-    state.zoom = Math.max(0.1, Math.min(8, state.zoom * factor));
-    state.pan.x = px - before.x * state.zoom;
-    state.pan.y = py - before.y * state.zoom;
-    zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
-    renderMap();
+    setZoom(state.zoom * factor, mx - rect.left, my - rect.top);
     return;
   }
   if (!state.isPainting) return;

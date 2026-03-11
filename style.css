@@ -566,6 +566,13 @@ body.drag-over #canvas-area {
   align-items:    center;
 }
 
+.inspector-row-editable {
+  display:        grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap:            4px;
+  align-items:    center;
+}
+
 .inspector-key {
   font-size:  11px;
   color:      var(--accent2);
