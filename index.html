@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stardew Valley Map Editor v1.0</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Shared component variables -->
+  <link rel="stylesheet" href="src/components/shared/styles/variables.css">
+  <!-- TilesheetModal component styles -->
+  <link rel="stylesheet" href="src/components/TilesheetModal/TilesheetModal.css">
 </head>
 <body>
 
@@ -231,14 +235,25 @@
   </div>
 </div>
 
-<!-- Missing Tilesheet Warning modal -->
-<div class="modal-overlay hidden" id="modal-ts-missing">
-  <div class="modal">
-    <h2>Tilesheet Image Missing</h2>
-    <p id="ts-missing-msg" style="font-size:13px; color:var(--text); margin-bottom:12px; line-height:1.5;"></p>
-    <div class="modal-actions">
-      <button class="btn-secondary" id="ts-missing-cancel">Cancel</button>
-      <button class="btn-primary"   id="ts-missing-select">Select Image</button>
+<!-- Missing Tilesheet Warning modal (TilesheetModal component) -->
+<div
+  class="modal-overlay hidden"
+  id="modal-ts-missing"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="ts-missing-title"
+  data-component="tilesheet-modal"
+>
+  <div class="modal ts-modal">
+    <div class="ts-modal__header">
+      <h2 class="ts-modal__title" id="ts-missing-title">Tilesheet Image Missing</h2>
+    </div>
+    <div class="ts-modal__body">
+      <p class="ts-modal__message" id="ts-missing-msg"></p>
+    </div>
+    <div class="ts-modal__footer modal-actions">
+      <button class="btn-secondary ts-modal__btn" id="ts-missing-cancel" type="button">Cancel</button>
+      <button class="btn-primary ts-modal__btn"   id="ts-missing-select" type="button">Select Image</button>
     </div>
   </div>
 </div>
@@ -263,6 +278,9 @@
   <button class="ctx-item" id="ctx-export-img">Export Image</button>
 </div>
 
+<script src="src/components/shared/utils/eventManager.js"></script>
+<script src="src/components/TilesheetModal/TilesheetModal.config.js"></script>
+<script src="src/components/TilesheetModal/TilesheetModal.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

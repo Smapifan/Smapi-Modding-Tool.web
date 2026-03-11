@@ -1,0 +1,79 @@
+/* ===========================================================================
+   TilesheetModal Component Styles
+   Overrides / extends the base .modal styles from style.css to fix the
+   layout issue where a long tilesheet name pushes the action buttons
+   off-screen.
+   =========================================================================== */
+
+/* --- Modal inner wrapper -------------------------------------------------- */
+.ts-modal {
+  /* Allow the modal to fill width on small screens */
+  width:            100%;
+  max-width:        var(--modal-max-width, 520px);
+
+  /* Flex column so header / body / footer stack and footer never scrolls away */
+  display:          flex;
+  flex-direction:   column;
+  max-height:       90vh;
+  overflow:         hidden;
+}
+
+/* --- Header --------------------------------------------------------------- */
+.ts-modal__header {
+  padding:          0 0 var(--modal-actions-mt, 20px) 0;
+  flex-shrink:      0;
+}
+
+.ts-modal__title {
+  margin:           0;
+  font-size:        var(--modal-title-size, 16px);
+  color:            var(--modal-title-color, var(--accent2, #f5a623));
+}
+
+/* --- Body ----------------------------------------------------------------- */
+.ts-modal__body {
+  /* Scrollable if the message is extremely long */
+  flex:             1;
+  overflow-y:       auto;
+  min-height:       0;
+  margin-bottom:    var(--modal-actions-mt, 20px);
+}
+
+/* FIX: ensure long filenames/paths break onto the next line instead of
+        stretching the container and pushing buttons off-screen.          */
+.ts-modal__message {
+  margin:           0;
+  font-size:        var(--modal-msg-size, 13px);
+  color:            var(--text, #eaeaea);
+  line-height:      var(--modal-line-height, 1.5);
+  word-break:       break-word;     /* break at any character if needed */
+  overflow-wrap:    break-word;     /* standard property                */
+  white-space:      normal;        /* never force single-line           */
+}
+
+/* --- Footer / Actions ----------------------------------------------------- */
+/* Override base .modal-actions to keep buttons fixed at the bottom and
+   prevent them from wrapping to a hidden row on very small widths.       */
+.ts-modal .ts-modal__footer.modal-actions {
+  margin-top:       0;             /* body margin-bottom handles spacing  */
+  flex-shrink:      0;             /* footer always visible               */
+  flex-wrap:        wrap;          /* allow wrapping only on tiny screens */
+  gap:              var(--modal-actions-gap, 8px);
+}
+
+/* Ensure individual buttons never shrink below their min-width */
+.ts-modal__btn {
+  flex-shrink:      0;
+  min-width:        var(--btn-min-width, 90px);
+}
+
+/* --- Responsive: stack buttons vertically on very small screens ----------- */
+@media (max-width: 480px) {
+  .ts-modal .ts-modal__footer.modal-actions {
+    flex-direction: column;
+  }
+
+  .ts-modal__btn {
+    width:          100%;
+  }
+}
