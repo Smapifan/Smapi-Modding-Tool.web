@@ -17,11 +17,12 @@ const state = {
   activeTsIndex: 0,   // index of selected tilesheet
   selTile: { x: 0, y: 0 }, // selected tile coords in tilesheet
   selTileEnd: null,   // for multi-tile selection { x, y }
-  tool: 'select',     // select | paint | erase | fill | eyedrop
+  tool: 'select',     // select | paint | erase | fill | eyedrop | tiledata
   zoom: 1.0,
   pan: { x: 0, y: 0 },
   showGrid: true,
   showCollision: false,  // collision overlay toggle
+  showTileData: false,   // TileData overlay toggle
   animPreview: false,    // animation preview toggle
   animTime: 0,           // elapsed ms since animation preview started (for per-tile frame intervals)
   animTimer: null,       // requestAnimationFrame handle
@@ -31,8 +32,6 @@ const state = {
   isDragging: false,
   dragStart: null,
   isPainting: false,
-  // touch support
-  lastTouchDist: null,   // for pinch-to-zoom
   undoStack: [],
   redoStack: [],
   tileImages: {},     // id -> HTMLImageElement
@@ -74,6 +73,14 @@ let assetManager = null;
   assetManager  = new AssetManager(library, state);
   await assetManager.init();
 })();
+
+// ===========================================================================
+// Component instances (TileDataEditor, AnimationEditor, TouchHandler)
+// ===========================================================================
+
+let tileDataEditor = null;
+let animationEditor = null;
+let touchHandler = null;
 
 // ===========================================================================
 // DOM references
@@ -278,6 +285,15 @@ function renderMap() {
       const layer = map.layers[li];
       if (!layer.visible) continue;
       renderCollisionOverlay(ctx, layer);
+    }
+  }
+
+  // TileData overlay (shows tile.props as coloured rectangles with labels)
+  if (state.showTileData && tileDataEditor) {
+    for (let li = 0; li < map.layers.length; li++) {
+      const layer = map.layers[li];
+      if (!layer.visible) continue;
+      tileDataEditor.renderOverlay(ctx, layer);
     }
   }
 
@@ -814,6 +830,13 @@ function renderTileInspector() {
   });
   addRow2.append(keyIn, dl, valIn, addBtn);
   inspectorDiv.appendChild(addRow2);
+
+  // --- Animation editor section (create / edit animations) ---
+  if (animationEditor) {
+    animationEditor.reset();
+    const animSection = animationEditor.buildSection(tile, layer, x, y);
+    inspectorDiv.appendChild(animSection);
+  }
 }
 
 function parseTypedValue(str) {
@@ -870,6 +893,14 @@ function loadMapFromArrayBuffer(buf, fileName) {
     }
     fitToWindow();
     afterMapChange();
+
+    // Auto-start animation preview if the map contains animated tiles
+    if (mapHasAnimations(map) && !state.animPreview) {
+      state.animPreview = true;
+      const animBtn = $('btn-anim-prev');
+      if (animBtn) animBtn.classList.add('active');
+      startAnimLoop();
+    }
 
     // Try to auto-load any missing tilesheets via the asset library, then
     // show the missing-tilesheet dialog only for those that couldn't be resolved.
@@ -958,6 +989,17 @@ function showMissingTilesheetDialog(tsId) {
 // ===========================================================================
 // Pure JS .tbin parser (browser-safe, mirrors tbin-js-fallback.js)
 // ===========================================================================
+
+/** Returns true if `map` contains at least one animated tile. */
+function mapHasAnimations(map) {
+  if (!map) return false;
+  for (const layer of map.layers) {
+    for (const tile of layer.tiles) {
+      if (tile && tile.isAnimated && tile.frames && tile.frames.length > 0) return true;
+    }
+  }
+  return false;
+}
 
 function parseTbin(ab) {
   const view    = new DataView(ab);
@@ -1395,6 +1437,18 @@ function applyTool(tx, ty) {
     case 'erase':   eraseTile(tx, ty);  break;
     case 'fill':    floodFill(tx, ty);  break;
     case 'eyedrop': eyedrop(tx, ty);    break;
+    case 'tiledata': {
+      const layer = getActiveLayer();
+      if (layer && tileDataEditor) {
+        if (tileDataEditor.eraseMode) {
+          tileDataEditor.erase(tx, ty, layer);
+        } else {
+          tileDataEditor.paint(tx, ty, layer);
+        }
+        renderMap();
+      }
+      break;
+    }
     case 'select':
       // Update tile inspector on click
       state.inspectedTileCoord = { x: tx, y: ty };
@@ -1434,6 +1488,12 @@ tsCanvas.addEventListener('click', e => {
   const tileStepY= ts.tileHeight + spacing;
   const x = Math.max(0, Math.floor((px - margin) / tileStep));
   const y = Math.max(0, Math.floor((py - margin) / tileStepY));
+  const tilesPerRow = getTilesPerRow(ts);
+  const idx = y * tilesPerRow + x;
+
+  // If animation editor is waiting for a frame, intercept this click
+  if (animationEditor && animationEditor.onTilesheetClick(ts.id, idx)) return;
+
   state.selTile = { x, y };
   updateTsOverlay();
   setStatus('Selected tile ' + x + ',' + y + ' in ' + ts.id, 'ok');
@@ -1493,6 +1553,17 @@ $('btn-anim-prev').addEventListener('click', () => {
     stopAnimLoop();
     renderMap();
   }
+});
+
+// --- TileData overlay toggle ---------------------------------------------
+
+$('btn-tiledata').addEventListener('click', () => {
+  state.showTileData = !state.showTileData;
+  $('btn-tiledata').classList.toggle('active', state.showTileData);
+  // Show/hide the TileData sidebar panel
+  const tdPanel = document.getElementById('tiledata-panel-section');
+  if (tdPanel) tdPanel.style.display = state.showTileData ? 'flex' : 'none';
+  renderMap();
 });
 
 function startAnimLoop() {
@@ -2020,64 +2091,72 @@ function setActiveTool(tool) {
 }
 
 // ===========================================================================
-// Touch events (mobile / tablet support)
+// Touch events (mobile / tablet support) – handled via TouchHandler component
 // ===========================================================================
 
-function getTouchPos(e) {
-  const rect = mapCanvas.getBoundingClientRect();
-  const t = e.touches[0];
-  return { clientX: t.clientX, clientY: t.clientY };
+// TouchHandler is initialised in the init() function at the bottom of this file.
+// The callbacks below translate generic gesture events into editor actions.
+
+function initTouchHandler() {
+  touchHandler = new TouchHandler(mapCanvas, {
+    /** Single-finger tap: start painting or selecting */
+    onTap(clientX, clientY) {
+      const tc = canvasTileCoords({ clientX, clientY });
+      if (!tc) return;
+      state.isPainting = true;
+      pushUndo();
+      applyTool(tc.x, tc.y);
+    },
+
+    /** Single-finger drag: continue paint stroke */
+    onDrag(clientX, clientY) {
+      if (!state.isPainting) return;
+      const tc = canvasTileCoords({ clientX, clientY });
+      state.hoverTile = tc;
+      if (tc) {
+        statusCursor.textContent = `Tile: ${tc.x},${tc.y}`;
+        applyTool(tc.x, tc.y);
+      }
+    },
+
+    /** Pan the map by (dx, dy) CSS pixels */
+    onPan(dx, dy) {
+      state.pan.x += dx;
+      state.pan.y += dy;
+      renderMap();
+    },
+
+    /** 2-finger pinch zoom toward (pivotX, pivotY) relative to canvas */
+    onPinchZoom(factor, pivotX, pivotY) {
+      setZoom(state.zoom * factor, pivotX, pivotY);
+    },
+
+    /** All fingers lifted */
+    onEnd() {
+      state.isPainting = false;
+    },
+
+    /** Long-press (500 ms) – show a simple context hint */
+    onLongPress(clientX, clientY) {
+      const tc = canvasTileCoords({ clientX, clientY });
+      if (tc) {
+        state.inspectedTileCoord = { x: tc.x, y: tc.y };
+        renderTileInspector();
+        renderMap();
+        setStatus(`Long-pressed tile ${tc.x},${tc.y}`, 'ok');
+      }
+    },
+
+    /**
+     * Returns true when a single-finger drag should pan instead of paint.
+     * Currently: pan mode is active when the "select" tool is chosen.
+     */
+    getIsPanMode() {
+      return state.tool === 'select';
+    },
+  });
+  touchHandler.init();
 }
-
-mapCanvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (e.touches.length === 2) {
-    // Pinch-to-zoom start
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    state.lastTouchDist = Math.sqrt(dx * dx + dy * dy);
-    return;
-  }
-  state.lastTouchDist = null;
-  const pos = getTouchPos(e);
-  const tc  = canvasTileCoords(pos);
-  if (!tc) return;
-  state.isPainting = true;
-  pushUndo();
-  applyTool(tc.x, tc.y);
-}, { passive: false });
-
-mapCanvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if (e.touches.length === 2 && state.lastTouchDist !== null) {
-    // Pinch-to-zoom
-    const dx   = e.touches[0].clientX - e.touches[1].clientX;
-    const dy   = e.touches[0].clientY - e.touches[1].clientY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const factor = dist / state.lastTouchDist;
-    state.lastTouchDist = dist;
-    // Zoom toward midpoint
-    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    const rect = mapCanvas.getBoundingClientRect();
-    setZoom(state.zoom * factor, mx - rect.left, my - rect.top);
-    return;
-  }
-  if (!state.isPainting) return;
-  const pos = getTouchPos(e);
-  const tc  = canvasTileCoords(pos);
-  state.hoverTile = tc;
-  if (tc) {
-    statusCursor.textContent = `Tile: ${tc.x},${tc.y}`;
-    applyTool(tc.x, tc.y);
-  }
-}, { passive: false });
-
-mapCanvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  state.isPainting = false;
-  state.lastTouchDist = null;
-}, { passive: false });
 
 // ===========================================================================
 // Drag & drop .tbin files
@@ -2127,6 +2206,22 @@ new ResizeObserver(resizeCanvas).observe(canvasArea);
 // ===========================================================================
 
 (function init() {
+  // Instantiate components
+  tileDataEditor = new TileDataEditor(state, { renderMap, pushUndo, setStatus });
+  animationEditor = new AnimationEditor(state, {
+    renderMap, renderTileInspector, pushUndo, setStatus, getTilesPerRow,
+  });
+
+  // Inject TileData sidebar panel into the right panel (initially hidden)
+  const tdPanelSection = document.getElementById('tiledata-panel-section');
+  if (tdPanelSection && tileDataEditor) {
+    tdPanelSection.appendChild(tileDataEditor.buildPanel());
+    tdPanelSection.style.display = 'none'; // hidden until TD button is pressed
+  }
+
+  // Initialise touch handler
+  initTouchHandler();
+
   resizeCanvas();
   renderLayerList();
   renderTsSelect();

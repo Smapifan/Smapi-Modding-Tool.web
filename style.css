@@ -710,3 +710,225 @@ body.drag-over #canvas-area {
 }
 .ctx-item:hover { background: var(--hover); }
 
+
+/* ===========================================================================
+   AnimationEditor component styles
+   =========================================================================== */
+
+.anim-editor-wrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+  padding-top:    4px;
+}
+
+.btn-anim-create,
+.btn-anim-add-frame,
+.btn-anim-to-static {
+  background:    var(--bg-panel);
+  border:        1px solid var(--border);
+  color:         var(--text);
+  padding:       4px 10px;
+  border-radius: var(--radius);
+  cursor:        pointer;
+  font-size:     11px;
+  font-family:   inherit;
+  width:         100%;
+  text-align:    left;
+  transition:    background 0.15s, border-color 0.15s;
+  min-height:    32px; /* touch-friendly */
+}
+.btn-anim-create:hover    { background: var(--hover); border-color: var(--accent); }
+.btn-anim-add-frame:hover { background: var(--hover); border-color: var(--accent); }
+.btn-anim-to-static:hover { background: var(--hover); }
+
+.btn-anim-add-frame.active {
+  background:    rgba(233,69,96,0.2);
+  border-color:  var(--accent);
+  color:         var(--accent);
+}
+
+.btn-anim-to-static {
+  color:         var(--text-dim);
+  font-size:     10px;
+}
+
+/* Frame list */
+.anim-frame-list {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  max-height:     160px;
+  overflow-y:     auto;
+}
+
+.anim-frame-row {
+  display:        flex;
+  align-items:    center;
+  gap:            4px;
+  padding:        2px 4px;
+  border-radius:  3px;
+  font-size:      11px;
+  color:          var(--text-dim);
+  transition:     background 0.1s;
+}
+.anim-frame-row:hover      { background: var(--hover); }
+.anim-frame-row.active     { background: rgba(255,200,0,0.12); color: var(--text); }
+
+.anim-frame-preview {
+  width:          24px;
+  height:         24px;
+  flex-shrink:    0;
+  border:         1px solid var(--border);
+  border-radius:  2px;
+  image-rendering: pixelated;
+  background:     #0a0a18;
+}
+
+.anim-frame-info {
+  flex:           1;
+  overflow:       hidden;
+  white-space:    nowrap;
+  text-overflow:  ellipsis;
+  font-family:    var(--mono);
+  font-size:      10px;
+}
+
+.anim-frame-btn {
+  background:    transparent;
+  border:        none;
+  color:         var(--text-dim);
+  cursor:        pointer;
+  font-size:     12px;
+  padding:       0 3px;
+  min-width:     22px;
+  min-height:    22px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  border-radius: 3px;
+  transition:    color 0.15s, background 0.15s;
+  flex-shrink:   0;
+}
+.anim-frame-btn:hover       { color: var(--text); background: var(--hover); }
+.anim-frame-btn:disabled    { opacity: 0.3; cursor: not-allowed; }
+.anim-frame-btn.anim-frame-del:hover { color: var(--accent); }
+
+/* ===========================================================================
+   TileDataEditor component styles
+   =========================================================================== */
+
+.tiledata-content {
+  display:        flex;
+  flex-direction: column;
+  gap:            5px;
+  padding:        8px;
+  overflow-y:     auto;
+  flex:           1;
+}
+
+.tiledata-label {
+  font-size:   11px;
+  color:       var(--text-dim);
+  font-weight: 600;
+}
+
+.tiledata-select,
+.tiledata-input {
+  background:    var(--bg-dark);
+  border:        1px solid var(--border);
+  border-radius: var(--radius);
+  color:         var(--text);
+  font:          inherit;
+  font-size:     12px;
+  padding:       4px 6px;
+  width:         100%;
+  min-height:    32px; /* touch-friendly */
+}
+.tiledata-select:focus,
+.tiledata-input:focus { outline: none; border-color: var(--accent); }
+
+.tiledata-custom-row {
+  display:   flex;
+  gap:       4px;
+}
+
+.tiledata-checkbox-row {
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+  font-size:   11px;
+  color:       var(--text-dim);
+  cursor:      pointer;
+  min-height:  28px; /* touch-friendly */
+}
+.tiledata-checkbox-row input[type=checkbox] {
+  width:  16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.tiledata-help {
+  font-size:   10px;
+  color:       var(--text-dim);
+  line-height: 1.4;
+  margin-top:  4px;
+  padding-top: 4px;
+  border-top:  1px solid var(--border);
+}
+
+/* ===========================================================================
+   Mobile / touch responsiveness
+   =========================================================================== */
+
+/* Minimum touch target for all interactive controls */
+.tool-btn,
+.menu-btn,
+.icon-btn,
+.season-btn,
+.btn-primary,
+.btn-secondary,
+.ctx-item {
+  min-height: 36px;
+}
+
+/* Ensure touch-action: none on map canvas (already in style but kept explicit) */
+#map-canvas  { touch-action: none; }
+#map-canvas:focus { outline: none; }
+
+/* On narrow screens: collapse side panels or stack them */
+@media (max-width: 700px) {
+  :root {
+    --panel-w: 200px;
+  }
+
+  #header .logo { font-size: 14px; }
+  .menu-btn      { font-size: 11px; padding: 4px 6px; }
+
+  #toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 4px 8px;
+    gap: 3px;
+  }
+
+  .tool-btn  { min-width: 32px; height: 32px; font-size: 10px; }
+  .zoom-display { min-width: 36px; font-size: 10px; }
+}
+
+@media (max-width: 500px) {
+  :root { --panel-w: 0px; }
+
+  #left-panel,
+  #right-panel {
+    display: none;
+  }
+
+  #main { flex-direction: column; }
+
+  #toolbar {
+    overflow-x: auto;
+    flex-wrap:  nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
