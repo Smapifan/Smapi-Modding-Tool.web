@@ -62,6 +62,19 @@ if (IS_NODE) {
 }
 
 // ===========================================================================
+// Asset Manager (auto-loads tilesheets from assets/ via AssetLibrary)
+// ===========================================================================
+
+let assetManager = null;
+
+(async function initAssetManager() {
+  if (typeof AssetLibrary === 'undefined' || typeof AssetManager === 'undefined') return;
+  const library = new AssetLibrary();
+  assetManager  = new AssetManager(library, state);
+  await assetManager.init();
+})();
+
+// ===========================================================================
 // DOM references
 // ===========================================================================
 
@@ -809,7 +822,7 @@ function loadMapFromArrayBuffer(buf, fileName) {
     state.dirty        = false;
     state.filePath     = fileName || null;
     state.inspectedTileCoord = null;
-    // Mark all tilesheets as missing (no image loaded yet)
+    // Mark all tilesheets as missing until we resolve them
     state.tileMissing = {};
     for (const ts of map.tilesheets) {
       if (!state.tileImages[ts.id]) {
@@ -818,16 +831,38 @@ function loadMapFromArrayBuffer(buf, fileName) {
     }
     fitToWindow();
     afterMapChange();
-    const missingCount = Object.keys(state.tileMissing).length;
-    if (missingCount > 0) {
-      setStatus(
-        `Loaded: ${fileName || 'map'} - ${missingCount} tilesheet image(s) missing. Use [Img] to load.`,
-        'warn'
-      );
-      // Auto-show missing tilesheet dialog for any missing tilesheet
-      showMissingTilesheetDialog();
+
+    // Try to auto-load any missing tilesheets via the asset library, then
+    // show the missing-tilesheet dialog only for those that couldn't be resolved.
+    if (assetManager && map.tilesheets.length > 0) {
+      assetManager.autoLoadTilesheets(map.tilesheets).then(({ loaded, missing }) => {
+        if (loaded.length > 0) {
+          // Re-render now that images are available
+          renderAll();
+        }
+        const missingCount = missing.length;
+        if (missingCount > 0) {
+          setStatus(
+            `Loaded: ${fileName || 'map'} - ${missingCount} tilesheet image(s) missing. Use [Img] or add images to assets/tilesheets/.`,
+            'warn'
+          );
+          showMissingTilesheetDialog();
+        } else if (Object.keys(state.tileMissing).length === 0) {
+          setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
+        }
+      });
     } else {
-      setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
+      const missingCount = Object.keys(state.tileMissing).length;
+      if (missingCount > 0) {
+        setStatus(
+          `Loaded: ${fileName || 'map'} - ${missingCount} tilesheet image(s) missing. Use [Img] to load.`,
+          'warn'
+        );
+        // Auto-show missing tilesheet dialog for any missing tilesheet
+        showMissingTilesheetDialog();
+      } else {
+        setStatus(`Loaded: ${fileName || 'map'}`, 'ok');
+      }
     }
   } catch (e) {
     setStatus('Error loading .tbin: ' + e.message, 'err');
@@ -850,9 +885,13 @@ function showMissingTilesheetDialog(tsId) {
   if (!ts) return;
 
   const msgEl = $('ts-missing-msg');
-  msgEl.textContent = 'Tilesheet "' + ts.id + '" expects image at: '
-    + (ts.imagePath || ts.id)
-    + '. Please select the image file to load.';
+  if (assetManager) {
+    msgEl.textContent = assetManager.buildMissingMessage(ts);
+  } else {
+    msgEl.textContent = 'Tilesheet "' + ts.id + '" expects image at: '
+      + (ts.imagePath || ts.id)
+      + '. Please select the image file to load.';
+  }
 
   $('modal-ts-missing').classList.remove('hidden');
 
@@ -1608,8 +1647,12 @@ $('ts-del-confirm').addEventListener('click', () => {
   pushUndo();
   const id = state.map.tilesheets[state.activeTsIndex].id;
   state.map.tilesheets.splice(state.activeTsIndex, 1);
-  delete state.tileImages[id];
-  delete state.tileMissing[id];
+  if (assetManager) {
+    assetManager.evict(id);
+  } else {
+    delete state.tileImages[id];
+    delete state.tileMissing[id];
+  }
   state.activeTsIndex = 0;
   renderAll();
   setStatus('Removed tilesheet: ' + id, 'ok');
@@ -1634,8 +1677,13 @@ $('ts-load-img-input').addEventListener('change', e => {
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
-      state.tileImages[ts.id] = img;
-      delete state.tileMissing[ts.id];
+      // Custom images always override library images
+      if (assetManager) {
+        assetManager.storeCustomImage(ts.id, img);
+      } else {
+        state.tileImages[ts.id] = img;
+        delete state.tileMissing[ts.id];
+      }
       // Always update sheet dimensions from the actual image (image is source of truth)
       ts.sheetWidth  = img.naturalWidth;
       ts.sheetHeight = img.naturalHeight;
@@ -1685,8 +1733,13 @@ tsCanvasWrap.addEventListener('drop', e => {
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
-      state.tileImages[ts.id] = img;
-      delete state.tileMissing[ts.id];
+      // Custom images always override library images
+      if (assetManager) {
+        assetManager.storeCustomImage(ts.id, img);
+      } else {
+        state.tileImages[ts.id] = img;
+        delete state.tileMissing[ts.id];
+      }
       ts.sheetWidth  = img.naturalWidth;
       ts.sheetHeight = img.naturalHeight;
       renderAll();
@@ -1784,8 +1837,14 @@ $('ctx-rename').addEventListener('click', () => {
     }
   }
   // Move the image cache entry
-  if (state.tileImages[ts.id]) { state.tileImages[newId] = state.tileImages[ts.id]; delete state.tileImages[ts.id]; }
-  if (state.tileMissing[ts.id]) { state.tileMissing[newId] = true; delete state.tileMissing[ts.id]; }
+  if (assetManager) {
+    const img = state.tileImages[ts.id];
+    if (img) { assetManager.storeCustomImage(newId, img); assetManager.evict(ts.id); }
+    else if (state.tileMissing[ts.id]) { state.tileMissing[newId] = true; delete state.tileMissing[ts.id]; }
+  } else {
+    if (state.tileImages[ts.id]) { state.tileImages[newId] = state.tileImages[ts.id]; delete state.tileImages[ts.id]; }
+    if (state.tileMissing[ts.id]) { state.tileMissing[newId] = true; delete state.tileMissing[ts.id]; }
+  }
   ts.id = newId;
   renderAll();
   setStatus('Renamed tilesheet to: ' + newId, 'ok');

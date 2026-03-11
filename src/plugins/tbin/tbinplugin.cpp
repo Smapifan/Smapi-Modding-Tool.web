@@ -441,12 +441,6 @@ tbin::Map TbinPlugin::toTbin( const Tiled::Map* map, const QDir &fileDir )
                 continue;
             }
 
-            if (obj->properties().isEmpty()) {
-                Tiled::WARNING(QStringLiteral("tBIN: Ignoring object %1 without custom properties.").arg(obj->id()),
-                                Tiled::JumpToObject { obj });
-                continue;
-            }
-
             if (obj->shape() != Tiled::MapObject::Shape::Rectangle) {
                 Tiled::WARNING(QStringLiteral("tBIN: Ignoring object %1 that isn't a rectangle.").arg(obj->id()),
                                 Tiled::JumpToObject { obj });
