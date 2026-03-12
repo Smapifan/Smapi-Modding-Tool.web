@@ -23,6 +23,7 @@ const state = {
   showGrid: true,
   showCollision: false,  // collision overlay toggle
   showTileData: false,   // TileData overlay toggle
+  showTileActions: false, // Tile Action overlay toggle
   animPreview: false,    // animation preview toggle
   animTime: 0,           // elapsed ms since animation preview started (for per-tile frame intervals)
   animTimer: null,       // requestAnimationFrame handle
@@ -88,6 +89,7 @@ let assetManager = null;
 let tileDataEditor = null;
 let animationEditor = null;
 let touchHandler = null;
+let tileActionEditor = null;
 
 // ===========================================================================
 // DOM references
@@ -114,6 +116,7 @@ const infoTsheets  = $('info-tsheets');
 
 const mCtx = mapCanvas.getContext('2d');
 const tCtx = tsCanvas.getContext('2d');
+const mapActionTooltip = $('map-action-tooltip');
 
 // ===========================================================================
 // Map model helpers
@@ -304,6 +307,15 @@ function renderMap() {
       const layer = map.layers[li];
       if (!layer.visible) continue;
       tileDataEditor.renderOverlay(ctx, layer);
+    }
+  }
+
+  // Tile Action overlay (shows action-type badges on tiles with Warp/Action/etc.)
+  if (state.showTileActions && tileActionEditor) {
+    for (let li = 0; li < map.layers.length; li++) {
+      const layer = map.layers[li];
+      if (!layer.visible) continue;
+      tileActionEditor.renderOverlay(ctx, layer);
     }
   }
 
@@ -1034,6 +1046,12 @@ function renderTileInspector() {
     const animSection = animationEditor.buildSection(tile, layer, x, y);
     inspectorDiv.appendChild(animSection);
   }
+
+  // --- Tile Action editor section (dedicated UI for Warp/Action/TouchAction etc.) ---
+  if (tileActionEditor) {
+    const taSection = tileActionEditor.buildInspectorSection(tile, layer, x, y);
+    inspectorDiv.appendChild(taSection);
+  }
 }
 
 function parseTypedValue(str) {
@@ -1606,8 +1624,26 @@ mapCanvas.addEventListener('mousemove', e => {
   if (tc) {
     statusCursor.textContent = `Tile: ${tc.x},${tc.y}`;
     if (state.isPainting) applyTool(tc.x, tc.y);
+
+    // Tile Action hover tooltip
+    if (state.showTileActions && tileActionEditor && mapActionTooltip) {
+      const layer   = getActiveLayer();
+      const tooltip = layer ? tileActionEditor.getTooltip(tc.x, tc.y, layer) : null;
+      if (tooltip) {
+        mapActionTooltip.textContent = tooltip;
+        mapActionTooltip.style.display = 'block';
+        const areaRect = canvasArea.getBoundingClientRect();
+        mapActionTooltip.style.left = (e.clientX - areaRect.left + 14) + 'px';
+        mapActionTooltip.style.top  = (e.clientY - areaRect.top  + 14) + 'px';
+      } else {
+        mapActionTooltip.style.display = 'none';
+      }
+    } else if (mapActionTooltip) {
+      mapActionTooltip.style.display = 'none';
+    }
   } else {
     statusCursor.textContent = '-';
+    if (mapActionTooltip) mapActionTooltip.style.display = 'none';
   }
   renderMap();
 });
@@ -1624,6 +1660,7 @@ mapCanvas.addEventListener('mouseleave', () => {
   state.hoverTile  = null;
   state.isPainting = false;
   statusCursor.textContent = '-';
+  if (mapActionTooltip) mapActionTooltip.style.display = 'none';
   renderMap();
 });
 
@@ -1654,6 +1691,18 @@ function applyTool(tx, ty) {
           tileDataEditor.erase(tx, ty, layer);
         } else {
           tileDataEditor.paint(tx, ty, layer);
+        }
+        renderMap();
+      }
+      break;
+    }
+    case 'tileaction': {
+      const layer = getActiveLayer();
+      if (layer && tileActionEditor) {
+        if (tileActionEditor.eraseMode) {
+          tileActionEditor.erase(tx, ty, layer);
+        } else {
+          tileActionEditor.paint(tx, ty, layer);
         }
         renderMap();
       }
@@ -1773,6 +1822,19 @@ $('btn-tiledata').addEventListener('click', () => {
   // Show/hide the TileData sidebar panel
   const tdPanel = document.getElementById('tiledata-panel-section');
   if (tdPanel) tdPanel.style.display = state.showTileData ? 'flex' : 'none';
+  renderMap();
+});
+
+// --- Tile Action overlay toggle ------------------------------------------
+
+$('btn-tileaction').addEventListener('click', () => {
+  state.showTileActions = !state.showTileActions;
+  $('btn-tileaction').classList.toggle('active', state.showTileActions);
+  if (tileActionEditor) tileActionEditor.showOverlay = state.showTileActions;
+  // Show/hide the Tile Action sidebar panel
+  const taPanel = document.getElementById('tileaction-panel-section');
+  if (taPanel) taPanel.style.display = state.showTileActions ? 'flex' : 'none';
+  if (!state.showTileActions && mapActionTooltip) mapActionTooltip.style.display = 'none';
   renderMap();
 });
 
@@ -2441,12 +2503,22 @@ new ResizeObserver(resizeCanvas).observe(canvasArea);
   animationEditor = new AnimationEditor(state, {
     renderMap, renderTileInspector, pushUndo, setStatus, getTilesPerRow,
   });
+  tileActionEditor = new TileActionEditor(state, {
+    renderMap, pushUndo, setStatus, renderTileInspector,
+  });
 
   // Inject TileData sidebar panel into the right panel (initially hidden)
   const tdPanelSection = document.getElementById('tiledata-panel-section');
   if (tdPanelSection && tileDataEditor) {
     tdPanelSection.appendChild(tileDataEditor.buildPanel());
     tdPanelSection.style.display = 'none'; // hidden until TD button is pressed
+  }
+
+  // Inject Tile Action sidebar panel into the right panel (initially hidden)
+  const taPanelSection = document.getElementById('tileaction-panel-section');
+  if (taPanelSection && tileActionEditor) {
+    taPanelSection.appendChild(tileActionEditor.buildPanel());
+    taPanelSection.style.display = 'none'; // hidden until TA button is pressed
   }
 
   // Initialise touch handler

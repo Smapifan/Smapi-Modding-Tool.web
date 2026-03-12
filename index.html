@@ -35,6 +35,7 @@
   <button class="tool-btn"        id="tool-fill"     title="Flood fill (F)" data-tool="fill">Fill</button>
   <button class="tool-btn"        id="tool-eyedrop"  title="Eyedropper (I)" data-tool="eyedrop">Pick</button>
   <button class="tool-btn"        id="tool-tiledata" title="TileData paint (D)" data-tool="tiledata">TD✏</button>
+  <button class="tool-btn"        id="tool-tileaction" title="Tile Action paint (A)" data-tool="tileaction">TA✏</button>
   <div class="tool-separator"></div>
   <button class="tool-btn"        id="btn-undo"     title="Undo (Ctrl+Z)">Undo</button>
   <button class="tool-btn"        id="btn-redo"     title="Redo (Ctrl+Y)">Redo</button>
@@ -48,6 +49,7 @@
   <button class="tool-btn"        id="btn-collision" title="Collision overlay (C)">Coll</button>
   <button class="tool-btn"        id="btn-anim-prev" title="Animation preview">Anim</button>
   <button class="tool-btn"        id="btn-tiledata"  title="Toggle TileData overlay &amp; editor (T)">TD</button>
+  <button class="tool-btn"        id="btn-tileaction" title="Toggle Tile Action overlay &amp; editor (A)">TA</button>
   <div class="tool-separator"></div>
   <span class="season-label">Season:</span>
   <button class="season-btn active" id="season-spring" data-season="spring" title="Spring">Spr</button>
@@ -103,6 +105,7 @@
   <!-- --- Canvas area --------------------------------------------------- -->
   <div id="canvas-area">
     <canvas id="map-canvas"></canvas>
+    <div id="map-action-tooltip"></div>
   </div>
 
   <!-- --- Right panel --------------------------------------------------- -->
@@ -119,6 +122,11 @@
     <!-- TileData Editor panel (shown when TD overlay is active) -->
     <div class="panel-section" id="tiledata-panel-section" style="display:none; flex-shrink:0; max-height:240px;">
       <!-- TileDataEditor.buildPanel() injects content here at runtime -->
+    </div>
+
+    <!-- Tile Action Editor panel (shown when TA overlay is active) -->
+    <div class="panel-section" id="tileaction-panel-section" style="display:none; flex-shrink:0; max-height:280px;">
+      <!-- TileActionEditor.buildPanel() injects content here at runtime -->
     </div>
 
     <div class="panel-section grow">
@@ -307,6 +315,7 @@
 <script src="src/components/TileDataEditor/TileDataEditor.js"></script>
 <script src="src/components/AnimationEditor/AnimationEditor.js"></script>
 <script src="src/components/TouchHandler/TouchHandler.js"></script>
+<script src="src/components/TileActionEditor/TileActionEditor.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

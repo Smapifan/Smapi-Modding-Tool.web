@@ -1022,3 +1022,151 @@ body.drag-over #canvas-area {
   color:         var(--text);
   font-weight:   700;
 }
+
+/* ===========================================================================
+   Tile Action Editor panel
+   =========================================================================== */
+
+.tileaction-content {
+  padding:    6px 8px;
+  display:    flex;
+  flex-direction: column;
+  gap:        5px;
+  overflow-y: auto;
+}
+
+.tileaction-label {
+  font-size:   11px;
+  font-weight: 700;
+  color:       var(--text-dim);
+  margin-top:  2px;
+}
+
+.tileaction-select,
+.tileaction-input {
+  width:       100%;
+  padding:     4px 6px;
+  background:  var(--bg-deep);
+  border:      1px solid var(--border);
+  border-radius: 3px;
+  color:       var(--text);
+  font-size:   12px;
+  box-sizing:  border-box;
+}
+
+.tileaction-select:focus,
+.tileaction-input:focus { outline: none; border-color: var(--accent); }
+
+.tileaction-select-sm {
+  flex-shrink: 0;
+  width:       auto;
+  max-width:   130px;
+}
+
+.tileaction-custom-row {
+  display: flex;
+  gap: 4px;
+}
+
+.tileaction-checkbox-row {
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+  font-size:   12px;
+  color:       var(--text-dim);
+  cursor:      pointer;
+}
+
+.tileaction-checkbox-row input[type=checkbox] {
+  width:  14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* Colour legend */
+.tileaction-legend {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       4px 8px;
+  margin-top: 4px;
+}
+
+.tileaction-legend-item {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  font-size:   11px;
+  color:       var(--text-dim);
+}
+
+.tileaction-legend-dot {
+  display:       inline-flex;
+  align-items:   center;
+  justify-content: center;
+  width:         16px;
+  height:        16px;
+  border-radius: 3px;
+  font-size:     9px;
+  font-weight:   700;
+  color:         #fff;
+  flex-shrink:   0;
+}
+
+.tileaction-help {
+  font-size:   10px;
+  color:       var(--text-dim);
+  line-height: 1.4;
+  margin-top:  4px;
+  padding-top: 4px;
+  border-top:  1px solid var(--border);
+}
+
+/* Inspector section for tile actions */
+.tileaction-inspector {
+  margin-top: 2px;
+}
+
+.tileaction-inspector-row {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  padding:     2px 0;
+}
+
+.tileaction-add-title {
+  font-size:   10px;
+  font-weight: 700;
+  color:       var(--text-dim);
+  margin-top:  6px;
+  margin-bottom: 3px;
+}
+
+.tileaction-add-row {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  flex-wrap:   wrap;
+}
+
+.tileaction-add-row .tileaction-input {
+  flex: 1;
+  min-width: 60px;
+}
+
+/* Map canvas hover tooltip for tile actions */
+#map-action-tooltip {
+  position:      absolute;
+  display:       none;
+  pointer-events: none;
+  background:    rgba(10, 15, 30, 0.92);
+  color:         #e0e8ff;
+  font-size:     11px;
+  line-height:   1.5;
+  padding:       5px 8px;
+  border-radius: 4px;
+  border:        1px solid rgba(100, 140, 255, 0.4);
+  white-space:   pre;
+  max-width:     280px;
+  z-index:       200;
+  box-shadow:    0 2px 8px rgba(0,0,0,0.5);
+}
