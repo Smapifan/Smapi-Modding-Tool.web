@@ -10,6 +10,7 @@
  *   - A coloured overlay on the map canvas (showOverlay)
  *   - A "TileData" tool (tool === 'tiledata') that paints / erases props
  *   - A sidebar panel with property selector, value input, and erase-mode toggle
+ *   - Property group tabs (All / Collision / Navigation / Placement / Events / Doors)
  */
 class TileDataEditor {
   /**
@@ -36,6 +37,23 @@ class TileDataEditor {
     this.MAX_LABEL_LENGTH = 5;
 
     /**
+     * Pre-defined TileData property groups for the panel tabs.
+     * props: null → show all KNOWN_PROPS.
+     * groupColor: CSS color used for the map overlay when this group is active.
+     */
+    this.PROP_GROUPS = [
+      { id: 'all',        name: 'All',        groupColor: null,                      props: null },
+      { id: 'collision',  name: 'Collision',  groupColor: 'rgba(220,40,40,0.35)',    props: ['Passable','NPCBarrier','NoRender','CannotPass'] },
+      { id: 'navigation', name: 'Navigation', groupColor: 'rgba(30,120,255,0.35)',   props: ['WaterTile','Friction','PathType','Layer'] },
+      { id: 'placement',  name: 'Placement',  groupColor: 'rgba(80,160,80,0.35)',    props: ['Diggable','Tillable','Placeable','Shadow'] },
+      { id: 'events',     name: 'Events',     groupColor: 'rgba(147,112,219,0.35)',  props: ['Action','TouchAction'] },
+      { id: 'doors',      name: 'Doors',      groupColor: 'rgba(255,140,0,0.35)',    props: ['LockedDoor'] },
+    ];
+
+    /** Currently active property group id. */
+    this.activeGroupId = 'all';
+
+    /**
      * Known Stardew Valley TileData properties with:
      *   - color : semi-transparent RGBA for the overlay rectangle
      *   - defaultVal : value shown in the value input when this prop is chosen
@@ -55,10 +73,16 @@ class TileDataEditor {
       { key: 'Shadow',      defaultVal: true,  color: 'rgba(100,100,150,0.45)'  },
       { key: 'PathType',    defaultVal: 0,     color: 'rgba(200,160,0,0.40)'    },
       { key: 'Layer',       defaultVal: 'Back',color: 'rgba(0,180,180,0.40)'    },
+      { key: 'CannotPass',  defaultVal: true,  color: 'rgba(200,60,60,0.45)'    },
     ];
 
     /** Fast color lookup: key → CSS color */
     this._colorMap = Object.fromEntries(this.KNOWN_PROPS.map(p => [p.key, p.color]));
+
+    // DOM references (set in buildPanel)
+    this._propSel    = null;
+    this._valIn      = null;
+    this._tabsWrap   = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -75,14 +99,30 @@ class TileDataEditor {
     return this._colorMap[propName] || 'rgba(255,200,0,0.35)';
   }
 
+  /**
+   * Returns the active PROP_GROUP object.
+   */
+  getActiveGroup() {
+    return this.PROP_GROUPS.find(g => g.id === this.activeGroupId) || this.PROP_GROUPS[0];
+  }
+
+  /**
+   * Returns the set of property keys that should be shown/painted for the
+   * currently active group.  Returns null when "All" is active (no filter).
+   */
+  getActiveGroupProps() {
+    const group = this.getActiveGroup();
+    return group.props; // null = all
+  }
+
   // ---------------------------------------------------------------------------
   // Map rendering
   // ---------------------------------------------------------------------------
 
   /**
    * Render semi-transparent TileData overlays for every tile in `layer` that
-   * has at least one property.  Called from renderMap() after all tile layers
-   * are drawn.
+   * has at least one property relevant to the active group.
+   * Called from renderMap() after all tile layers are drawn.
    *
    * @param {CanvasRenderingContext2D} ctx
    * @param {object} layer
@@ -92,6 +132,10 @@ class TileDataEditor {
     const tw = layer.tileWidth;
     const th = layer.tileHeight;
     const fontSize = Math.max(5, Math.min(th * 0.45, 9));
+
+    const activeGroup   = this.getActiveGroup();
+    const filterProps   = activeGroup.props;     // null = all
+    const groupColor    = activeGroup.groupColor; // null = use per-prop color
 
     ctx.save();
     ctx.font           = `bold ${fontSize}px system-ui`;
@@ -105,7 +149,12 @@ class TileDataEditor {
         if (!tile || tile.isNull) continue;
         const props = tile.props;
         if (!props) continue;
-        const keys = Object.keys(props);
+
+        // Collect relevant keys (filtered by active group)
+        let keys = Object.keys(props);
+        if (filterProps) {
+          keys = keys.filter(k => filterProps.includes(k));
+        }
         if (keys.length === 0) continue;
 
         const maxBands = Math.min(keys.length, 3);
@@ -114,7 +163,7 @@ class TileDataEditor {
         // Draw one coloured band per property (up to 3)
         keys.forEach((k, i) => {
           if (i >= maxBands) return;
-          ctx.fillStyle = this.getPropColor(k);
+          ctx.fillStyle = groupColor || this.getPropColor(k);
           ctx.fillRect(tx * tw, ty * th + i * bandH, tw, bandH);
         });
 
@@ -174,6 +223,30 @@ class TileDataEditor {
     header.textContent = 'TileData';
     wrap.appendChild(header);
 
+    // --- Group tabs ---
+    const tabsWrap = document.createElement('div');
+    tabsWrap.className = 'tiledata-group-tabs';
+    this._tabsWrap = tabsWrap;
+
+    this.PROP_GROUPS.forEach(group => {
+      const tab = document.createElement('button');
+      tab.className   = 'tiledata-group-tab' + (group.id === this.activeGroupId ? ' active' : '');
+      tab.textContent = group.name;
+      tab.dataset.groupId = group.id;
+      tab.addEventListener('click', () => {
+        this.activeGroupId = group.id;
+        // Update active tab styles
+        tabsWrap.querySelectorAll('.tiledata-group-tab').forEach(t => {
+          t.classList.toggle('active', t.dataset.groupId === group.id);
+        });
+        // Reset prop selector to the first prop of this group
+        this._refreshPropSelect();
+        this.callbacks.renderMap();
+      });
+      tabsWrap.appendChild(tab);
+    });
+    wrap.appendChild(tabsWrap);
+
     // --- Content ---
     const content = document.createElement('div');
     content.className = 'tiledata-content';
@@ -185,30 +258,16 @@ class TileDataEditor {
     const propSel = document.createElement('select');
     propSel.id        = 'tiledata-prop-select';
     propSel.className = 'tiledata-select';
+    this._propSel = propSel;
 
-    this.KNOWN_PROPS.forEach(p => {
-      const opt  = document.createElement('option');
-      opt.value  = p.key;
-      opt.textContent = p.key;
-      propSel.appendChild(opt);
-    });
-
-    // Separator + "custom" entry
-    const sep = document.createElement('option');
-    sep.disabled    = true;
-    sep.textContent = '──────────';
-    propSel.appendChild(sep);
-
-    const cust = document.createElement('option');
-    cust.value       = '__custom__';
-    cust.textContent = '(custom key…)';
-    propSel.appendChild(cust);
+    this._buildPropOptions(propSel);
 
     // Value input (default = "true")
     const valIn = document.createElement('input');
     valIn.id        = 'tiledata-val-input';
     valIn.className = 'tiledata-input';
     valIn.value     = 'true';
+    this._valIn = valIn;
 
     // Custom key input (hidden unless "custom" selected)
     const customWrap = document.createElement('div');
@@ -262,7 +321,7 @@ class TileDataEditor {
     // Help text
     const help = document.createElement('div');
     help.className   = 'tiledata-help';
-    help.textContent = 'Activate the TD tool in the toolbar, then click/drag tiles to paint.';
+    help.textContent = 'Select a group tab, choose property & value, then use the TD✏ tool to paint tiles.';
     content.appendChild(help);
 
     wrap.appendChild(content);
@@ -272,6 +331,48 @@ class TileDataEditor {
   // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
+
+  /** Populate or repopulate the property <select> based on the active group. */
+  _buildPropOptions(sel) {
+    sel.innerHTML = '';
+    const filterProps = this.getActiveGroupProps(); // null = all
+
+    const propsToShow = filterProps
+      ? this.KNOWN_PROPS.filter(p => filterProps.includes(p.key))
+      : this.KNOWN_PROPS;
+
+    propsToShow.forEach(p => {
+      const opt  = document.createElement('option');
+      opt.value  = p.key;
+      opt.textContent = p.key;
+      sel.appendChild(opt);
+    });
+
+    // Separator + "custom" entry
+    const sep = document.createElement('option');
+    sep.disabled    = true;
+    sep.textContent = '──────────';
+    sel.appendChild(sep);
+
+    const cust = document.createElement('option');
+    cust.value       = '__custom__';
+    cust.textContent = '(custom key…)';
+    sel.appendChild(cust);
+
+    // Set initial paintProp to the first visible option
+    if (propsToShow.length > 0) {
+      this.paintProp  = propsToShow[0].key;
+      this.paintValue = propsToShow[0].defaultVal;
+      sel.value = this.paintProp;
+      if (this._valIn) this._valIn.value = String(this.paintValue);
+    }
+  }
+
+  /** Refresh the prop select when the active group changes. */
+  _refreshPropSelect() {
+    if (!this._propSel) return;
+    this._buildPropOptions(this._propSel);
+  }
 
   _lbl(text) {
     const el       = document.createElement('div');
