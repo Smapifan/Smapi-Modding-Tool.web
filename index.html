@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Stardew Valley Map Editor v1.0</title>
   <link rel="stylesheet" href="style.css">
   <!-- Shared component variables -->
@@ -29,11 +29,12 @@
 
 <!-- === Toolbar =========================================================== -->
 <div id="toolbar">
-  <button class="tool-btn active" id="tool-select"  title="Select (S)" data-tool="select">Sel</button>
-  <button class="tool-btn"        id="tool-paint"   title="Paint tile (P)" data-tool="paint">Pen</button>
-  <button class="tool-btn"        id="tool-erase"   title="Erase (E)" data-tool="erase">Del</button>
-  <button class="tool-btn"        id="tool-fill"    title="Flood fill (F)" data-tool="fill">Fill</button>
-  <button class="tool-btn"        id="tool-eyedrop" title="Eyedropper (I)" data-tool="eyedrop">Pick</button>
+  <button class="tool-btn active" id="tool-select"   title="Select (S)" data-tool="select">Sel</button>
+  <button class="tool-btn"        id="tool-paint"    title="Paint tile (P)" data-tool="paint">Pen</button>
+  <button class="tool-btn"        id="tool-erase"    title="Erase (E)" data-tool="erase">Del</button>
+  <button class="tool-btn"        id="tool-fill"     title="Flood fill (F)" data-tool="fill">Fill</button>
+  <button class="tool-btn"        id="tool-eyedrop"  title="Eyedropper (I)" data-tool="eyedrop">Pick</button>
+  <button class="tool-btn"        id="tool-tiledata" title="TileData paint (D)" data-tool="tiledata">TD✏</button>
   <div class="tool-separator"></div>
   <button class="tool-btn"        id="btn-undo"     title="Undo (Ctrl+Z)">Undo</button>
   <button class="tool-btn"        id="btn-redo"     title="Redo (Ctrl+Y)">Redo</button>
@@ -46,6 +47,7 @@
   <button class="tool-btn"        id="btn-grid"      title="Toggle grid (G)">Grid</button>
   <button class="tool-btn"        id="btn-collision" title="Collision overlay (C)">Coll</button>
   <button class="tool-btn"        id="btn-anim-prev" title="Animation preview">Anim</button>
+  <button class="tool-btn"        id="btn-tiledata"  title="Toggle TileData overlay &amp; editor (T)">TD</button>
   <div class="tool-separator"></div>
   <span class="season-label">Season:</span>
   <button class="season-btn active" id="season-spring" data-season="spring" title="Spring">Spr</button>
@@ -106,11 +108,16 @@
   <aside id="right-panel">
 
     <!-- Tile Inspector -->
-    <div class="panel-section" id="tile-inspector-section" style="max-height:220px; flex-shrink:0;">
+    <div class="panel-section" id="tile-inspector-section" style="max-height:280px; flex-shrink:0;">
       <div class="panel-header">Tile Inspector</div>
       <div id="tile-inspector">
         <div class="inspector-hint">Click a tile to inspect</div>
       </div>
+    </div>
+
+    <!-- TileData Editor panel (shown when TD overlay is active) -->
+    <div class="panel-section" id="tiledata-panel-section" style="display:none; flex-shrink:0; max-height:240px;">
+      <!-- TileDataEditor.buildPanel() injects content here at runtime -->
     </div>
 
     <div class="panel-section grow">
@@ -283,6 +290,9 @@
 <script src="src/components/TilesheetModal/TilesheetModal.js"></script>
 <script src="src/components/AssetManager/AssetLibrary.js"></script>
 <script src="src/components/AssetManager/AssetManager.js"></script>
+<script src="src/components/TileDataEditor/TileDataEditor.js"></script>
+<script src="src/components/AnimationEditor/AnimationEditor.js"></script>
+<script src="src/components/TouchHandler/TouchHandler.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>
