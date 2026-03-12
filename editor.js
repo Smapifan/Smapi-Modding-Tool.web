@@ -48,6 +48,13 @@ const IS_NODE = typeof process !== 'undefined' && process.versions && process.ve
 // Default animation frame interval (ms) used when a tile's frameInterval is 0 or missing
 const DEFAULT_FRAME_INTERVAL_MS = 150;
 
+// Layer group ID counter – avoids collisions when groups are created rapidly.
+let _layerGroupCounter = 0;
+
+// Layer lock/unlock icons (middle dot when unlocked looks subtle; lock emoji when locked)
+const LAYER_LOCK_ICON   = '\uD83D\uDD12'; // 🔒
+const LAYER_UNLOCK_ICON = '\u00B7';        // · (middle dot)
+
 let tbinAddon = null;
 if (IS_NODE) {
   const path = require('path');
@@ -146,6 +153,7 @@ function createEmptyMap(id = 'NewMap', desc = '', w = 30, h = 20, tileW = 16, ti
     desc,
     props: {},
     tilesheets: [],
+    layerGroups: [],   // [{id, name, collapsed}]
     layers: [
       createLayer('Back', w, h, tileW, tileH),
       createLayer('Buildings', w, h, tileW, tileH),
@@ -159,6 +167,8 @@ function createLayer(id, w, h, tileW = 16, tileH = 16) {
     id,
     desc: '',
     visible: true,
+    locked: false,     // prevents accidental edits
+    group: '',         // layer group id ('' = no group)
     layerWidth:  w,
     layerHeight: h,
     tileWidth:   tileW,
@@ -508,45 +518,232 @@ function updateTsOverlay() {
 function renderLayerList() {
   layerList.innerHTML = '';
   if (!state.map) return;
-  // Render layers in reverse order (top-most first visually)
-  const layers = [...state.map.layers].reverse();
-  const realLen = state.map.layers.length;
-  layers.forEach((layer, revIdx) => {
-    const realIdx = realLen - 1 - revIdx;
-    const item = document.createElement('div');
-    item.className = 'layer-item' +
-      (realIdx === state.activeLayer ? ' selected' : '') +
-      (!layer.visible ? ' hidden' : '');
 
-    const eye = document.createElement('span');
-    eye.className = 'layer-vis';
-    eye.textContent = layer.visible ? 'V' : 'H';
-    eye.title = 'Toggle visibility';
-    eye.addEventListener('click', e => {
-      e.stopPropagation();
-      pushUndo();
-      layer.visible = !layer.visible;
-      renderLayerList();
-      renderMap();
-    });
+  const layers = state.map.layers;
+  const groups = state.map.layerGroups || [];
+  const realLen = layers.length;
 
-    const name = document.createElement('span');
-    name.className = 'layer-name ellipsis';
-    name.textContent = layer.id;
+  // Build display list in reverse order (top layer first visually)
+  const displayItems = Array.from({ length: realLen }, (_, revIdx) => ({
+    realIdx: realLen - 1 - revIdx,
+    layer: layers[realLen - 1 - revIdx],
+  }));
 
-    const size = document.createElement('span');
-    size.className = 'layer-size';
-    size.textContent = `${layer.layerWidth}x${layer.layerHeight}`;
+  const shownGroups = new Set();
 
-    item.append(eye, name, size);
-    item.addEventListener('click', () => {
-      state.activeLayer = realIdx;
-      renderLayerList();
-      renderProps();
-      renderMap();
-    });
-    layerList.appendChild(item);
+  displayItems.forEach(({ realIdx, layer }) => {
+    const groupId = layer.group || '';
+
+    // Show group header when we first encounter this group
+    if (groupId && !shownGroups.has(groupId)) {
+      shownGroups.add(groupId);
+      const group = groups.find(g => g.id === groupId) || { id: groupId, name: groupId, collapsed: false };
+      layerList.appendChild(_buildLayerGroupHeader(group));
+    }
+
+    // Skip layer item if its group is collapsed
+    if (groupId) {
+      const groupObj = groups.find(g => g.id === groupId);
+      if (groupObj && groupObj.collapsed) return;
+    }
+
+    layerList.appendChild(_buildLayerItem(realIdx, layer, !!groupId));
   });
+}
+
+function _buildLayerGroupHeader(group) {
+  const header = document.createElement('div');
+  header.className = 'layer-group-header';
+  header.dataset.groupId = group.id;
+
+  const toggle = document.createElement('span');
+  toggle.className = 'layer-group-toggle';
+  toggle.textContent = group.collapsed ? '▶' : '▼';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'layer-group-name';
+  nameEl.textContent = group.name || group.id;
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'layer-group-del icon-btn';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete group (layers become ungrouped)';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    deleteLayerGroup(group.id);
+  });
+
+  header.append(toggle, nameEl, delBtn);
+  header.addEventListener('click', () => {
+    group.collapsed = !group.collapsed;
+    renderLayerList();
+  });
+
+  return header;
+}
+
+function _buildLayerItem(realIdx, layer, indented) {
+  const item = document.createElement('div');
+  item.className = 'layer-item' +
+    (realIdx === state.activeLayer ? ' selected' : '') +
+    (!layer.visible ? ' hidden' : '') +
+    (layer.locked ? ' locked' : '') +
+    (indented ? ' grouped' : '');
+
+  // Visibility toggle
+  const eye = document.createElement('span');
+  eye.className = 'layer-vis';
+  eye.textContent = layer.visible ? 'V' : 'H';
+  eye.title = layer.visible ? 'Hide layer' : 'Show layer';
+  eye.addEventListener('click', e => {
+    e.stopPropagation();
+    pushUndo();
+    layer.visible = !layer.visible;
+    renderLayerList();
+    renderMap();
+  });
+
+  // Lock toggle
+  const lockBtn = document.createElement('span');
+  lockBtn.className = 'layer-lock';
+  lockBtn.textContent = layer.locked ? LAYER_LOCK_ICON : LAYER_UNLOCK_ICON;
+  lockBtn.title = layer.locked ? 'Unlock layer' : 'Lock layer';
+  lockBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    layer.locked = !layer.locked;
+    renderLayerList();
+    setStatus(layer.locked ? `Layer "${layer.id}" locked` : `Layer "${layer.id}" unlocked`, 'ok');
+  });
+
+  const name = document.createElement('span');
+  name.className = 'layer-name ellipsis';
+  name.textContent = layer.id;
+
+  const size = document.createElement('span');
+  size.className = 'layer-size';
+  size.textContent = `${layer.layerWidth}x${layer.layerHeight}`;
+
+  item.append(eye, lockBtn, name, size);
+
+  // Left-click: select layer
+  item.addEventListener('click', () => {
+    state.activeLayer = realIdx;
+    renderLayerList();
+    renderProps();
+    renderMap();
+  });
+
+  // Right-click: layer context menu
+  item.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showLayerContextMenu(realIdx, layer, e.clientX, e.clientY);
+  });
+
+  return item;
+}
+
+// ---------------------------------------------------------------------------
+// Layer context menu (group assignment + rename)
+// ---------------------------------------------------------------------------
+
+let _layerCtxMenu = null;
+
+function showLayerContextMenu(layerIdx, layer, cx, cy) {
+  hideLayerContextMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.id = 'layer-ctx-menu';
+  menu.style.left = cx + 'px';
+  menu.style.top  = cy + 'px';
+
+  // ----- Assign to Group -----
+  const grpTitle = document.createElement('div');
+  grpTitle.className = 'ctx-section-title';
+  grpTitle.textContent = 'Assign to Group';
+  menu.appendChild(grpTitle);
+
+  // "None" option
+  const noneBtn = document.createElement('button');
+  noneBtn.className = 'ctx-item' + (!layer.group ? ' active' : '');
+  noneBtn.textContent = '— None —';
+  noneBtn.addEventListener('click', () => {
+    layer.group = '';
+    hideLayerContextMenu();
+    renderLayerList();
+  });
+  menu.appendChild(noneBtn);
+
+  (state.map.layerGroups || []).forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'ctx-item' + (layer.group === g.id ? ' active' : '');
+    btn.textContent = g.name;
+    btn.addEventListener('click', () => {
+      layer.group = g.id;
+      hideLayerContextMenu();
+      renderLayerList();
+    });
+    menu.appendChild(btn);
+  });
+
+  // Divider
+  const div = document.createElement('div');
+  div.className = 'ctx-divider';
+  menu.appendChild(div);
+
+  // Rename
+  const renameBtn = document.createElement('button');
+  renameBtn.className = 'ctx-item';
+  renameBtn.textContent = 'Rename…';
+  renameBtn.addEventListener('click', () => {
+    hideLayerContextMenu();
+    const newId = prompt(`Rename layer "${layer.id}" to:`, layer.id);
+    if (newId && newId.trim() && newId.trim() !== layer.id) {
+      pushUndo();
+      layer.id = newId.trim();
+      renderLayerList();
+      renderMapInfo();
+    }
+  });
+  menu.appendChild(renameBtn);
+
+  document.body.appendChild(menu);
+  _layerCtxMenu = menu;
+}
+
+function hideLayerContextMenu() {
+  if (_layerCtxMenu) {
+    _layerCtxMenu.remove();
+    _layerCtxMenu = null;
+  }
+}
+
+// Close layer context menu on any outside click
+document.addEventListener('click', () => hideLayerContextMenu(), true);
+
+// ---------------------------------------------------------------------------
+// Layer group management functions
+// ---------------------------------------------------------------------------
+
+function addLayerGroup(name) {
+  if (!state.map) return null;
+  state.map.layerGroups = state.map.layerGroups || [];
+  const id = 'grp_' + (++_layerGroupCounter);
+  state.map.layerGroups.push({ id, name, collapsed: false });
+  setStatus(`Added layer group: ${name}`, 'ok');
+  renderLayerList();
+  return id;
+}
+
+function deleteLayerGroup(groupId) {
+  if (!state.map || !state.map.layerGroups) return;
+  // Ungroup all layers in this group
+  for (const layer of state.map.layers) {
+    if (layer.group === groupId) layer.group = '';
+  }
+  state.map.layerGroups = state.map.layerGroups.filter(g => g.id !== groupId);
+  renderLayerList();
+  setStatus('Layer group deleted', 'ok');
 }
 
 function renderTsSelect() {
@@ -876,6 +1073,12 @@ function loadMapFromArrayBuffer(buf, fileName) {
   // Use the JS fallback inline (avoid require in browser)
   try {
     const map = parseTbin(buf);
+    // Normalize layer model fields added after the initial .tbin spec
+    if (!map.layerGroups) map.layerGroups = [];
+    for (const layer of map.layers) {
+      if (layer.locked === undefined) layer.locked = false;
+      if (layer.group  === undefined) layer.group  = '';
+    }
     state.map = map;
     state.activeLayer  = 0;
     state.activeTsIndex = 0;
@@ -1432,6 +1635,13 @@ mapCanvas.addEventListener('wheel', e => {
 }, { passive: false });
 
 function applyTool(tx, ty) {
+  // Prevent edits on locked layers (select and eyedrop always allowed)
+  const activeLayer = getActiveLayer();
+  if (activeLayer && activeLayer.locked && state.tool !== 'select' && state.tool !== 'eyedrop') {
+    setStatus(`Layer "${activeLayer.id}" is locked — unlock it first`, 'warn');
+    return;
+  }
+
   switch (state.tool) {
     case 'paint':   paintTile(tx, ty);  break;
     case 'erase':   eraseTile(tx, ty);  break;
@@ -1676,6 +1886,13 @@ $('btn-layer-add').addEventListener('click', () => {
   $('modal-add-layer').classList.remove('hidden');
 });
 
+$('btn-layer-group-add').addEventListener('click', () => {
+  if (!state.map) { setStatus('Open or create a map first', 'warn'); return; }
+  $('modal-add-layer-group').classList.remove('hidden');
+  $('new-group-name').value = 'Group ' + ((state.map.layerGroups || []).length + 1);
+  $('new-group-name').focus();
+});
+
 $('add-layer-cancel').addEventListener('click', () => $('modal-add-layer').classList.add('hidden'));
 $('add-layer-ok').addEventListener('click', () => {
   const id   = $('new-layer-id').value.trim()   || 'Layer';
@@ -1689,6 +1906,13 @@ $('add-layer-ok').addEventListener('click', () => {
   $('modal-add-layer').classList.add('hidden');
   renderAll();
   setStatus(`Added layer: ${id}`, 'ok');
+});
+
+$('add-group-cancel').addEventListener('click', () => $('modal-add-layer-group').classList.add('hidden'));
+$('add-group-ok').addEventListener('click', () => {
+  const name = $('new-group-name').value.trim() || 'Group';
+  addLayerGroup(name);
+  $('modal-add-layer-group').classList.add('hidden');
 });
 
 $('btn-layer-del').addEventListener('click', () => {
@@ -2184,7 +2408,13 @@ document.addEventListener('drop', async e => {
     loadMapFromArrayBuffer(ab, file.name);
   } else if (file.name.endsWith('.json')) {
     const text = await file.text();
-    state.map = JSON.parse(text);
+    const map = JSON.parse(text);
+    if (!map.layerGroups) map.layerGroups = [];
+    for (const layer of (map.layers || [])) {
+      if (layer.locked === undefined) layer.locked = false;
+      if (layer.group  === undefined) layer.group  = '';
+    }
+    state.map = map;
     state.activeLayer = 0;
     state.activeTsIndex = 0;
     fitToWindow();

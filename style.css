@@ -252,12 +252,27 @@ body {
 .layer-item:hover     { background: var(--hover); }
 .layer-item.selected  { background: var(--selected); border-left: 2px solid var(--accent); }
 .layer-item.hidden    { opacity: 0.45; }
+.layer-item.locked .layer-name { opacity: 0.55; font-style: italic; }
+.layer-item.grouped   { padding-left: 18px; }
 
 .layer-vis {
   cursor: pointer;
   font-size: 13px;
   flex-shrink: 0;
 }
+
+/* Lock toggle in layer list */
+.layer-lock {
+  cursor:      pointer;
+  font-size:   11px;
+  flex-shrink: 0;
+  opacity:     0.4;
+  width:       14px;
+  text-align:  center;
+}
+.layer-lock:hover         { opacity: 1; }
+.layer-item.locked .layer-lock { opacity: 1; color: var(--accent2); }
+
 .layer-name {
   flex:       1;
   overflow:   hidden;
@@ -268,6 +283,49 @@ body {
   font-size:  10px;
   color:      var(--text-dim);
 }
+
+/* Layer group headers */
+.layer-group-header {
+  display:        flex;
+  align-items:    center;
+  padding:        4px 8px;
+  gap:            5px;
+  font-size:      11px;
+  font-weight:    700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color:          var(--accent2);
+  background:     var(--bg-dark);
+  border-top:     1px solid var(--border);
+  border-bottom:  1px solid var(--border);
+  cursor:         pointer;
+  user-select:    none;
+}
+.layer-group-header:hover  { background: var(--hover); }
+.layer-group-toggle        { font-size: 9px; flex-shrink: 0; }
+.layer-group-name          { flex: 1; }
+.layer-group-del {
+  opacity:   0.5;
+  padding:   0 3px;
+  font-size: 10px;
+}
+.layer-group-del:hover     { opacity: 1; color: var(--accent); }
+
+/* Layer context-menu divider */
+.ctx-divider {
+  height:     1px;
+  background: var(--border);
+  margin:     3px 0;
+}
+.ctx-section-title {
+  padding:     3px 10px;
+  font-size:   10px;
+  font-weight: 600;
+  color:       var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ctx-item.active { color: var(--accent2); }
 
 /* --- Tileset panel -------------------------------------------------------- */
 #tileset-select-row {
@@ -931,4 +989,36 @@ body.drag-over #canvas-area {
     flex-wrap:  nowrap;
     -webkit-overflow-scrolling: touch;
   }
+}
+
+/* ===========================================================================
+   TileData property group tabs
+   =========================================================================== */
+
+.tiledata-group-tabs {
+  display:        flex;
+  flex-wrap:      wrap;
+  gap:            3px;
+  padding:        5px 6px;
+  border-bottom:  1px solid var(--border);
+  flex-shrink:    0;
+}
+
+.tiledata-group-tab {
+  font-size:     10px;
+  padding:       3px 8px;
+  border:        1px solid var(--border);
+  border-radius: 10px;
+  cursor:        pointer;
+  background:    transparent;
+  color:         var(--text-dim);
+  transition:    background 0.15s, border-color 0.15s, color 0.15s;
+  min-height:    26px;
+}
+.tiledata-group-tab:hover { background: var(--hover); color: var(--text); }
+.tiledata-group-tab.active {
+  background:    var(--selected);
+  border-color:  var(--accent);
+  color:         var(--text);
+  font-weight:   700;
 }

@@ -67,10 +67,11 @@
       <div class="panel-header">
         Layers
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btn-layer-add"    title="Add layer">+</button>
-          <button class="icon-btn" id="btn-layer-del"    title="Delete layer">X</button>
-          <button class="icon-btn" id="btn-layer-up"     title="Move layer up">Up</button>
-          <button class="icon-btn" id="btn-layer-down"   title="Move layer down">Dn</button>
+          <button class="icon-btn" id="btn-layer-add"       title="Add layer">+</button>
+          <button class="icon-btn" id="btn-layer-del"       title="Delete layer">X</button>
+          <button class="icon-btn" id="btn-layer-up"        title="Move layer up">Up</button>
+          <button class="icon-btn" id="btn-layer-down"      title="Move layer down">Dn</button>
+          <button class="icon-btn" id="btn-layer-group-add" title="Add layer group">Grp</button>
         </div>
       </div>
       <div id="layer-list"></div>
@@ -261,6 +262,19 @@
     <div class="ts-modal__footer modal-actions">
       <button class="btn-secondary ts-modal__btn" id="ts-missing-cancel" type="button">Cancel</button>
       <button class="btn-primary ts-modal__btn"   id="ts-missing-select" type="button">Select Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Layer Group modal -->
+<div class="modal-overlay hidden" id="modal-add-layer-group">
+  <div class="modal">
+    <h2>Add Layer Group</h2>
+    <label>Group Name</label>
+    <input type="text" id="new-group-name" value="Group 1" placeholder="e.g. Background, Foreground, Paths">
+    <div class="modal-actions">
+      <button class="btn-secondary" id="add-group-cancel">Cancel</button>
+      <button class="btn-primary"   id="add-group-ok">Add</button>
     </div>
   </div>
 </div>
